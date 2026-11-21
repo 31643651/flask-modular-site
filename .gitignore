@@ -1,0 +1,68 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+env/
+
+# 测试与覆盖率
+.pytest_cache/
+.coverage
+htmlcov/
+
+# 运行时数据
+Module/json/
+Module/data/*.db
+Module/data/*.db-journal
+Module/data/*.db-wal
+Module/data/*.db-shm
+Module/data/*.pid
+Module/log/*.log
+Module/log/app.log.*
+Module/log/log/
+Module/userfix/submissions/
+
+# 敏感文件（登录态 Cookie 等）
+cookies.txt
+
+# 临时文件
+*.tmp
+*.log
+.DS_Store
+Thumbs.db
+
+# Windows 保留文件名（误创建文件）
+nul
+
+# SD Inspector（静态挂载站）
+sdinspector/
+Module/sdinspector/
+
+# 壁纸目录
+Module/static/wallpaper/
+
+# 挂载服务测试 fixture 残留目录
+Module/static/mount_test_*/
+
+# 画廊测试图片目录
+imagetest/
+
+# IDE
+.idea/
+.vscode/
+
+# AI 代理工作缓存（Superpowers）
+.superpowers/
+
+# 发布包产物
+dist/
+
+# Ruff Python 工具缓存
+.ruff_cache/
+
+# 会话工作区状态文件（session.py 生成，不入库）
+CURRENT_TASK.md
+
+
+

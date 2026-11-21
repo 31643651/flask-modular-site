@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" href="/static/favicon.ico">
+    <title>{{ book.title }} - 第{{ chapter_num }}章</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { background: #f8f9fa; color: #333; font-family: 'Microsoft YaHei', sans-serif; line-height: 1.8; padding: 20px; max-width: 900px; margin: 0 auto; }
+        .header { text-align: center; margin-bottom: 30px; padding-bottom: 20px; border-bottom: 1px solid #eee; }
+        .book-title { font-size: 1.8rem; color: #2c3e50; margin-bottom: 5px; }
+        .chapter-title { font-size: 1.5rem; color: #e74c3c; margin: 10px 0 20px; }
+        .content { background: white; padding: 40px; border-radius: 10px; box-shadow: 0 5px 20px rgba(0,0,0,0.05); line-height: 1.9; font-size: 1.1rem; }
+        .content p { margin-bottom: 1.5em; text-indent: 2em; }
+        .nav-links { margin-top: 30px; display: flex; justify-content: space-between; }
+        .nav-btn { background: #3498db; color: white; padding: 10px 25px; border-radius: 5px; text-decoration: none; font-weight: bold; }
+        .nav-btn:hover { background: #2980b9; }
+        .back-link { display: inline-block; margin-top: 20px; color: #7f8c8d; text-decoration: none; }
+        .back-link:hover { color: #3498db; }
+        
+        /* 暗夜模式 */
+        body.dark-mode { background: #1a1a1a; color: #e0e0e0; }
+        body.dark-mode .header { border-bottom-color: #4d4d4d; }
+        body.dark-mode .book-title { color: #e0e0e0; }
+        body.dark-mode .content { background: #2d2d2d; box-shadow: 0 5px 20px rgba(0,0,0,0.3); }
+
+        @media (max-width: 768px) {
+            .book-title { font-size: 1.3rem; }
+            .chapter-title { font-size: 1.2rem; }
+            .content { padding: 20px; font-size: 1rem; }
+            .nav-links { flex-direction: column; gap: 10px; }
+            .nav-btn { text-align: center; }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1 class="book-title">{{ book.title }}</h1>
+        <h2 class="chapter-title">第{{ chapter_num }}章</h2>
+    </div>
+
+    <div class="content">
+        {% for paragraph in content %}
+        <p>{{ paragraph }}</p>
+        {% endfor %}
+    </div>
+
+    <div class="nav-links">
+        <a href="/book/{{ book.id }}" class="nav-btn">返回目录</a>
+        <a href="/book" class="nav-btn">返回搜索</a>
+    </div>
+    
+    <script>
+        // 检查 Cookie 中的暗夜模式设置
+        function checkDarkMode() {
+            const darkMode = getCookie('darkMode') === 'true';
+            applyDarkMode(darkMode);
+        }
+        
+        // 应用暗夜模式
+        function applyDarkMode(darkMode) {
+            if (darkMode) {
+                document.body.classList.add('dark-mode');
+            } else {
+                document.body.classList.remove('dark-mode');
+            }
+        }
+        
+        // 获取 Cookie
+        function getCookie(name) {
+            const value = `; ${document.cookie}`;
+            const parts = value.split(`; ${name}=`);
+            if (parts.length === 2) return parts.pop().split(';').shift();
+            return '';
+        }
+        
+        // 页面加载时检查暗夜模式
+        checkDarkMode();
+    </script>
+</body>
+</html>

@@ -1,0 +1,15 @@
+/* 共享暗夜模式补充样式：对话框等由 ui.js 提供、但各页自带内联底色的组件 */
+
+body.dark-mode #dialogModal > div {
+    background: #2d2d2d !important;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.6) !important;
+}
+
+body.dark-mode #dialogMessage {
+    color: #e0e0e0 !important;
+}
+
+body.dark-mode #dialogCancel {
+    background: #4d4d4d !important;
+    color: #e0e0e0 !important;
+}

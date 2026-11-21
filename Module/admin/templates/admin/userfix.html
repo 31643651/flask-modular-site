@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" href="/static/favicon.ico">
+    <title>用户修复管理 - 控制台</title>
+    <script src="/static/common/ui.js"></script>
+    <link rel="stylesheet" href="/static/common/dark-mode.css">
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Microsoft YaHei', sans-serif; }
+        body { background: #f5f7fa; color: #2c3e50; line-height: 1.5; display: flex; min-height: 100vh; }
+
+        .sidebar { width: 220px; background: white; display: flex; flex-direction: column; flex-shrink: 0; border-right: 1px solid #e0e0e0; }
+        .sidebar-header { padding: 20px; border-bottom: 1px solid #e0e0e0; }
+        .sidebar-title { font-size: 18px; font-weight: 500; color: #2c3e50; }
+        .sidebar-nav { flex: 1; padding: 10px 0; }
+        .nav-item { padding: 12px 20px; cursor: pointer; color: #7f8c8d; font-size: 14px; display: flex; align-items: center; transition: background 0.2s; text-decoration: none; }
+        .nav-item:hover { background: #f5f7fa; color: #2c3e50; }
+        .nav-item.active { background: #3498db; color: white; }
+        .nav-icon { margin-right: 10px; font-size: 16px; }
+
+        .main-content { flex: 1; padding: 20px; overflow-y: auto; }
+        .page-header { margin-bottom: 20px; }
+        .page-title { font-size: 20px; font-weight: 500; color: #2c3e50; }
+
+        .card { background: white; border-radius: 6px; padding: 16px; margin-bottom: 16px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        .card-title { font-size: 16px; font-weight: 500; color: #2c3e50; margin-bottom: 12px; }
+
+        .filter-bar { display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap; }
+        .filter-btn { padding: 6px 12px; background: #ecf0f1; border: none; border-radius: 4px; cursor: pointer; font-size: 13px; transition: background 0.2s; text-decoration: none; }
+        .filter-btn:hover { background: #bdc3c7; }
+        .filter-btn.active { background: #3498db; color: white; }
+
+        .submission-list { display: flex; flex-direction: column; gap: 12px; }
+        .submission-card { padding: 16px; background: #f8f9fa; border-radius: 6px; }
+        .submission-card.processed { opacity: 0.8; }
+        .submission-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px; flex-wrap: wrap; gap: 8px; }
+        .submission-user { font-size: 14px; font-weight: 500; color: #2c3e50; }
+        .submission-time { font-size: 12px; color: #7f8c8d; }
+        .submission-status { padding: 4px 8px; border-radius: 4px; font-size: 12px; }
+        .status-unprocessed { background: #fff3cd; color: #856404; }
+        .status-processed { background: #d4edda; color: #155724; }
+        .submission-content { font-size: 14px; color: #2c3e50; margin-bottom: 12px; white-space: pre-wrap; word-break: break-word; max-height: 100px; overflow-y: auto; }
+        .submission-images { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }
+        .submission-image { width: 80px; height: 80px; object-fit: cover; border-radius: 4px; cursor: pointer; border: 1px solid #eee; transition: transform 0.2s; }
+        .submission-image:hover { transform: scale(1.05); }
+        .submission-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+
+        .btn { padding: 8px 16px; background: #3498db; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 14px; margin-right: 8px; transition: background 0.2s; text-decoration: none; display: inline-block; }
+        .btn:hover { background: #2980b9; }
+        .btn-success { background: #27ae60; }
+        .btn-success:hover { background: #219a52; }
+        .btn-warning { background: #f39c12; }
+        .btn-warning:hover { background: #d68910; }
+        .btn-danger { background: #e74c3c; }
+        .btn-danger:hover { background: #c0392b; }
+        .btn-sm { padding: 6px 12px; font-size: 12px; }
+
+        .pagination { display: flex; justify-content: center; gap: 8px; margin-top: 20px; flex-wrap: wrap; }
+        .page-btn { padding: 8px 12px; background: white; color: #2c3e50; border: 1px solid #ddd; border-radius: 4px; cursor: pointer; font-size: 14px; text-decoration: none; transition: all 0.2s; }
+        .page-btn:hover { background: #f5f7fa; }
+        .page-btn.active { background: #3498db; color: white; border-color: #3498db; }
+        .page-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+        .page-info { font-size: 14px; color: #7f8c8d; padding: 8px 0; }
+
+        .empty-state { text-align: center; padding: 40px; color: #7f8c8d; }
+        .empty-state-icon { font-size: 48px; margin-bottom: 16px; }
+
+        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 1000; justify-content: center; align-items: center; }
+        .modal.active { display: flex; }
+        .modal-content { max-width: 90%; max-height: 90%; }
+        .modal-close { position: absolute; top: 20px; right: 20px; color: white; font-size: 24px; cursor: pointer; background: none; border: none; }
+        
+        /* 暗夜模式 */
+        body.dark-mode { background: #1a1a1a; color: #e0e0e0; }
+        body.dark-mode .sidebar { background: #2d2d2d; border-right: 1px solid #4d4d4d; }
+        body.dark-mode .sidebar-header { border-bottom: 1px solid #4d4d4d; }
+        body.dark-mode .sidebar-title { color: #e0e0e0; }
+        body.dark-mode .nav-item { color: #a0a0a0; }
+        body.dark-mode .nav-item:hover { background: #3d3d3d; color: #e0e0e0; }
+        body.dark-mode .nav-item.active { background: #3498db; color: white; }
+        body.dark-mode .page-title { color: #e0e0e0; }
+        body.dark-mode .card { background: #2d2d2d; box-shadow: 0 2px 4px rgba(0,0,0,0.3); }
+        body.dark-mode .card-title { color: #e0e0e0; }
+        body.dark-mode .filter-btn { background: #3d3d3d; color: #e0e0e0; }
+        body.dark-mode .filter-btn:hover { background: #4d4d4d; }
+        body.dark-mode .submission-card { background: #3d3d3d; }
+        body.dark-mode .submission-user { color: #e0e0e0; }
+        body.dark-mode .submission-time { color: #a0a0a0; }
+        body.dark-mode .submission-content { color: #e0e0e0; }
+        body.dark-mode .page-btn { background: #2d2d2d; color: #e0e0e0; border-color: #4d4d4d; }
+        body.dark-mode .page-btn:hover { background: #3d3d3d; }
+        body.dark-mode .page-btn.active { background: #3498db; color: white; }
+        body.dark-mode .page-info { color: #a0a0a0; }
+        body.dark-mode div[style*="#f8f9fa"] { background: #3d3d3d !important; }
+
+        /* 响应式 */
+        @media (max-width: 768px) {
+            body { flex-direction: column; }
+            .sidebar { width: 100%; }
+            .sidebar-nav { display: flex; overflow-x: auto; }
+            .nav-item { flex-shrink: 0; }
+            .main-content { padding: 12px; }
+            .submission-card { padding: 12px; }
+            .submission-image { width: 60px; height: 60px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="sidebar">
+        <div class="sidebar-header">
+            <div class="sidebar-title">控制台</div>
+        </div>
+        <div class="sidebar-nav">
+            <a href="/admin" class="nav-item">
+                仪表盘
+            </a>
+            <a href="/admin/config" class="nav-item">
+                配置管理
+            </a>
+            <a href="/admin/setting" class="nav-item">
+                系统设置
+            </a>
+            <a href="/admin/activity" class="nav-item">
+                活动日志
+            </a>
+            <a href="/admin/users" class="nav-item">
+                活动账户
+            </a>
+            <a href="/admin/userfix" class="nav-item active">
+                用户反馈
+            </a>
+        </div>
+    </div>
+    
+    <div class="main-content">
+        <div class="page-header">
+            <div class="page-title">控制台 > 用户反馈管理</div>
+        </div>
+        
+        <div class="card">
+            <div class="card-title">
+                <span>反馈列表</span>
+                <span style="font-size: 12px; font-weight: normal; color: #7f8c8d;">共 {{ total_count }} 条</span>
+            </div>
+            
+            <!-- 筛选按钮 -->
+            <div class="filter-bar">
+                <a href="/admin/userfix?status=all" class="filter-btn {% if status_filter == 'all' %}active{% endif %}">全部</a>
+                <a href="/admin/userfix?status=unprocessed" class="filter-btn {% if status_filter == 'unprocessed' %}active{% endif %}">未处理</a>
+                <a href="/admin/userfix?status=processed" class="filter-btn {% if status_filter == 'processed' %}active{% endif %}">已处理</a>
+            </div>
+            
+            <!-- 提交列表 -->
+            <div class="submission-list" id="submissionList">
+                {% if submissions %}
+                    {% for sub in submissions %}
+                    <div class="submission-card {% if sub.status == 'processed' %}processed{% endif %}" data-id="{{ sub.id }}">
+                        <div class="submission-header">
+                            <div>
+                                <div class="submission-user">{{ sub.username }}</div>
+                                <div class="submission-time">{{ sub.timestamp }}</div>
+                            </div>
+                            <span class="submission-status {% if sub.status == 'processed' %}status-processed{% else %}status-unprocessed{% endif %}">
+                                {{ '已处理' if sub.status == 'processed' else '未处理' }}
+                            </span>
+                        </div>
+                        
+                        <div class="submission-content">{{ sub.content }}</div>
+                        
+                        {% if sub.has_images %}
+                        <div class="submission-images">
+                            {% for img in sub.images %}
+                            <img src="/userfix/image/{{ sub.id }}/{{ img }}" class="submission-image" onclick="previewImage(this.src)" alt="反馈图片">
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+                        
+                        <div class="submission-actions">
+                            {% if sub.status == 'unprocessed' %}
+                            <button class="btn btn-success btn-sm" onclick="updateStatus('{{ sub.id }}', 'processed')">标记已处理</button>
+                            {% else %}
+                            <button class="btn btn-warning btn-sm" onclick="updateStatus('{{ sub.id }}', 'unprocessed')">标记未处理</button>
+                            {% endif %}
+                            <button class="btn btn-danger btn-sm" onclick="deleteSubmission('{{ sub.id }}')">删除</button>
+                        </div>
+                    </div>
+                    {% endfor %}
+                {% else %}
+                    <div class="empty-state">
+                        <div class="empty-state-icon">📭</div>
+                        <div>暂无反馈记录</div>
+                    </div>
+                {% endif %}
+            </div>
+            
+            <!-- 分页 -->
+            {% if total_pages > 1 %}
+            <div class="pagination">
+                <span class="page-info">第 {{ page }}/{{ total_pages }} 页</span>
+                
+                {% if page > 1 %}
+                <a href="/admin/userfix?page=1&status={{ status_filter }}" class="page-btn">首页</a>
+                <a href="/admin/userfix?page={{ page-1 }}&status={{ status_filter }}" class="page-btn">上一页</a>
+                {% endif %}
+                
+                {% for p in range(1, total_pages + 1) %}
+                    {% if p == page %}
+                        <span class="page-btn active">{{ p }}</span>
+                    {% elif p <= 3 or p > total_pages - 3 or (p >= page - 2 and p <= page + 2) %}
+                        <a href="/admin/userfix?page={{ p }}&status={{ status_filter }}" class="page-btn">{{ p }}</a>
+                    {% elif p == 4 or p == total_pages - 3 %}
+                        <span class="page-btn">...</span>
+                    {% endif %}
+                {% endfor %}
+                
+                {% if page < total_pages %}
+                <a href="/admin/userfix?page={{ page+1 }}&status={{ status_filter }}" class="page-btn">下一页</a>
+                <a href="/admin/userfix?page={{ total_pages }}&status={{ status_filter }}" class="page-btn">末页</a>
+                {% endif %}
+            </div>
+            {% endif %}
+        </div>
+        
+        <div style="margin-top: 20px;">
+            <a href="/" class="btn">返回主页</a>
+            <a href="/admin" class="btn">返回仪表盘</a>
+        </div>
+    </div>
+    
+    <!-- 图片预览模态框 -->
+    <div class="modal" id="imageModal">
+        <button class="modal-close" onclick="closeModal()">&times;</button>
+        <img class="modal-content" id="modalImage">
+    </div>
+
+    <!-- 自定义对话框模态框 -->
+    <div class="modal" id="dialogModal" style="background: rgba(0,0,0,0.5);">
+        <div style="background: white; border-radius: 8px; padding: 24px; max-width: 400px; width: 90%; box-shadow: 0 4px 20px rgba(0,0,0,0.3);">
+            <div id="dialogMessage" style="font-size: 14px; color: #2c3e50; margin-bottom: 20px; line-height: 1.6;"></div>
+            <div style="display: flex; justify-content: flex-end; gap: 8px;">
+                <button id="dialogCancel" class="btn" style="background: #95a5a6;" onclick="closeDialog()">取消</button>
+                <button id="dialogConfirm" class="btn btn-success" onclick="confirmDialog()">确定</button>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        function handleResponse(response) {
+            if (response.redirected || response.url.includes('/user/verify') || response.url.includes('/user/login')) {
+                showAlert('会话已过期，请刷新页面重新登录');
+                location.reload();
+                return null;
+            }
+            const contentType = response.headers.get('content-type');
+            if (contentType && contentType.includes('text/html')) {
+                showAlert('会话已过期，请刷新页面重新登录');
+                location.reload();
+                return null;
+            }
+            return response.json();
+        }
+        
+        function updateStatus(id, status) {
+            showConfirm('确定要更新状态吗？', function(confirmed) {
+                if (!confirmed) return;
+                
+                fetch('/admin/userfix/api/update-status', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-Token': getCsrfToken()
+                    },
+                    body: JSON.stringify({ id: id, status: status })
+                })
+                .then(response => handleResponse(response))
+                .then(data => {
+                    if (!data) return;
+                    if (data.success) {
+                        location.reload();
+                    } else {
+                        showAlert(data.message || '操作失败');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    showAlert('网络错误');
+                });
+            });
+        }
+        
+        function deleteSubmission(id) {
+            showConfirm('确定要删除这条反馈吗？此操作不可恢复！', function(confirmed) {
+                if (!confirmed) return;
+                
+                fetch('/admin/userfix/api/delete', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-Token': getCsrfToken()
+                    },
+                    body: JSON.stringify({ id: id })
+                })
+                .then(response => handleResponse(response))
+                .then(data => {
+                    if (!data) return;
+                    if (data.success) {
+                        location.reload();
+                    } else {
+                        showAlert(data.message || '删除失败');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    showAlert('网络错误');
+                });
+            });
+        }
+        
+        function previewImage(src) {
+            const modal = document.getElementById('imageModal');
+            const modalImg = document.getElementById('modalImage');
+            modal.classList.add('active');
+            modalImg.src = src;
+        }
+        
+        function closeModal() {
+            document.getElementById('imageModal').classList.remove('active');
+        }
+        
+        // 点击模态框背景关闭
+        document.getElementById('imageModal').addEventListener('click', function(e) {
+            if (e.target === this) {
+                closeModal();
+            }
+        });
+        
+        // ESC键关闭模态框
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                closeModal();
+            }
+        });
+        
+    </script>
+</body>
+</html>

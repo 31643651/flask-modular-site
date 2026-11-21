@@ -1,0 +1,522 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" href="/static/favicon.ico">
+    <title>活动日志 - 控制台</title>
+    <script src="/static/common/ui.js"></script>
+    <link rel="stylesheet" href="/static/common/dark-mode.css">
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Microsoft YaHei', sans-serif; }
+        body { background: #f5f7fa; color: #2c3e50; line-height: 1.5; display: flex; min-height: 100vh; }
+
+        .sidebar { width: 220px; background: white; display: flex; flex-direction: column; flex-shrink: 0; border-right: 1px solid #e0e0e0; }
+        .sidebar-header { padding: 20px; border-bottom: 1px solid #e0e0e0; }
+        .sidebar-title { font-size: 18px; font-weight: 500; color: #2c3e50; }
+        .sidebar-nav { flex: 1; padding: 10px 0; }
+        .nav-item { padding: 12px 20px; cursor: pointer; color: #7f8c8d; font-size: 14px; display: flex; align-items: center; transition: background 0.2s; text-decoration: none; }
+        .nav-item:hover { background: #f5f7fa; color: #2c3e50; }
+        .nav-item.active { background: #3498db; color: white; }
+        .nav-icon { margin-right: 10px; font-size: 16px; }
+
+        .main-content { flex: 1; padding: 20px; overflow-y: auto; }
+        .page-header { margin-bottom: 20px; }
+        .page-title { font-size: 20px; font-weight: 500; color: #2c3e50; }
+
+        .card { background: white; border-radius: 8px; padding: 20px; margin-bottom: 16px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        .card-title { font-size: 16px; font-weight: 500; color: #2c3e50; margin-bottom: 16px; }
+
+        .filter-section { margin-bottom: 20px; }
+        .filter-buttons { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 15px; }
+        .filter-btn { padding: 8px 16px; background: #ecf0f1; color: #2c3e50; border: none; border-radius: 4px; cursor: pointer; font-size: 14px; transition: background 0.2s; }
+        .filter-btn:hover { background: #d5dbdb; }
+        .filter-btn.active { background: #3498db; color: white; }
+
+        .table-container { overflow-x: auto; }
+        .activity-table { width: 100%; border-collapse: collapse; font-size: 14px; }
+        .activity-table th { background: #f8f9fa; padding: 12px 8px; text-align: left; font-weight: 500; color: #2c3e50; border-bottom: 2px solid #ddd; white-space: nowrap; }
+        .activity-table td { padding: 12px 8px; border-bottom: 1px solid #eee; }
+        .activity-table tr:hover { background: #f8f9fa; }
+        .activity-table tr:last-child td { border-bottom: none; }
+        .activity-table .group-row:hover { background: #e8f4f8; cursor: pointer; }
+
+        .status-badge { display: inline-block; padding: 4px 8px; border-radius: 4px; font-size: 12px; font-weight: 500; white-space: nowrap; }
+        .status-logged-in { background: #d5f5e3; color: #27ae60; }
+        .status-not-logged-in { background: #fadbd8; color: #e74c3c; }
+
+        .visit-count { color: #3498db; font-size: 12px; margin-top: 4px; }
+        .detail-header { margin-bottom: 10px; font-weight: 500; }
+        .detail-list { border-top: 1px solid #e0e0e0; }
+        .detail-item { padding: 8px; border-bottom: 1px solid #e0e0e0; font-size: 13px; }
+        .detail-time { color: #7f8c8d; }
+        .detail-info { margin-left: 20px; }
+        .activity-table .detail-row td { padding: 10px 20px; background: #f8f9fa; }
+
+        .username-highlight { font-weight: 500; color: #3498db; }
+
+        .expand-icon { display: block; position: absolute; left: 8px; top: 50%; transform: translateY(-50%); color: #3498db; transition: transform 0.2s; font-size: 12px; cursor: pointer; z-index: 1; }
+        .time-text { display: block; position: relative; z-index: 0; }
+        .activity-table .group-row td:first-child { position: relative; padding-left: 24px; }
+
+        .btn { padding: 8px 16px; background: #3498db; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 14px; margin-right: 8px; transition: background 0.2s; text-decoration: none; display: inline-block; }
+        .btn:hover { background: #2980b9; }
+        .btn-secondary { background: #95a5a6; }
+        .btn-secondary:hover { background: #7f8c8d; }
+
+        @media (max-width: 768px) {
+            body { flex-direction: column; }
+            .sidebar { width: 100%; }
+            .sidebar-nav { display: flex; overflow-x: auto; }
+            .nav-item { flex-shrink: 0; }
+            .filter-buttons { flex-direction: column; }
+            .activity-table { font-size: 12px; }
+            .activity-table th, .activity-table td { padding: 8px 4px; }
+        }
+
+        /* 暗夜模式 */
+        body.dark-mode { background: #1a1a1a; color: #e0e0e0; }
+        body.dark-mode .sidebar { background: #2d2d2d; border-right: 1px solid #4d4d4d; }
+        body.dark-mode .sidebar-header { border-bottom: 1px solid #4d4d4d; }
+        body.dark-mode .sidebar-title { color: #e0e0e0; }
+        body.dark-mode .nav-item { color: #a0a0a0; }
+        body.dark-mode .nav-item:hover { background: #3d3d3d; color: #e0e0e0; }
+        body.dark-mode .nav-item.active { background: #3498db; color: white; }
+        body.dark-mode .page-title { color: #e0e0e0; }
+        body.dark-mode .card { background: #2d2d2d; box-shadow: 0 2px 4px rgba(0,0,0,0.3); }
+        body.dark-mode .card-title { color: #e0e0e0; }
+        body.dark-mode .activity-table th { background: #3d3d3d; color: #e0e0e0; border-bottom-color: #4d4d4d; }
+        body.dark-mode .activity-table td { border-bottom-color: #4d4d4d; }
+        body.dark-mode .activity-table tr:hover { background: #3d3d3d; }
+        body.dark-mode .activity-table .group-row:hover { background: #3d3d3d; }
+        body.dark-mode .activity-table .detail-row td { background: #3d3d3d; }
+        body.dark-mode .activity-table .detail-row .detail-header { color: #e0e0e0; }
+        body.dark-mode .activity-table .detail-row .detail-list { border-top-color: #4d4d4d; }
+        body.dark-mode .activity-table .detail-row .detail-item { border-bottom-color: #4d4d4d; }
+        body.dark-mode .activity-table .detail-row .detail-time { color: #7f8c8d; }
+        body.dark-mode .activity-table .detail-row .detail-info { color: #e0e0e0; }
+        body.dark-mode .visit-count { color: #3498db; }
+        body.dark-mode .detail-header { color: #e0e0e0; }
+        body.dark-mode .detail-list { border-top-color: #4d4d4d; }
+        body.dark-mode .detail-item { border-bottom-color: #4d4d4d; }
+        body.dark-mode .detail-time { color: #7f8c8d; }
+        body.dark-mode .detail-info { color: #e0e0e0; }
+        body.dark-mode .expand-icon { color: #3498db; }
+        body.dark-mode .filter-btn { background: #3d3d3d; color: #e0e0e0; }
+        body.dark-mode .filter-btn:hover { background: #4d4d4d; }
+        body.dark-mode .filter-btn.active { background: #3498db; color: white; }
+        body.dark-mode .status-logged-in { background: #27ae60; color: white; }
+        body.dark-mode .status-not-logged-in { background: #e74c3c; color: white; }
+    </style>
+</head>
+<body>
+    <div class="sidebar">
+        <div class="sidebar-header">
+            <div class="sidebar-title">控制台</div>
+        </div>
+        <div class="sidebar-nav">
+            <a href="/admin" class="nav-item">
+                仪表盘
+            </a>
+            <a href="/admin/config" class="nav-item">
+                配置管理
+            </a>
+            <a href="/admin/setting" class="nav-item">
+                系统设置
+            </a>
+            <a href="/admin/activity" class="nav-item active">
+                活动日志
+            </a>
+            <a href="/admin/users" class="nav-item">
+                活动账户
+            </a>
+            <a href="/admin/userfix" class="nav-item">
+                用户反馈
+            </a>
+        </div>
+    </div>
+
+    <div class="main-content">
+        <div class="page-header">
+            <div class="page-title">服务器 > 活动日志{% if filter_username %} > {{ filter_username }}{% endif %}</div>
+        </div>
+
+        <div class="card">
+            <div class="card-title" style="display: flex; justify-content: space-between; align-items: center;">
+                <span>{% if show_all %}全部日志{% else %}活动日志 (最近200条){% endif %}</span>
+                <div>
+                    {% if show_all %}
+                    <a href="/admin/activity" class="btn" style="margin-right: 8px;">返回摘要</a>
+                    {% else %}
+                    <a href="/admin/activity/all" class="btn" style="margin-right: 8px;">查看全部日志</a>
+                    {% endif %}
+                    <div class="dropdown" style="display: inline-block;">
+                        <button class="btn btn-secondary" onclick="toggleCleanupMenu()">清理日志</button>
+                        <div id="cleanup-menu" class="dropdown-content" style="display: none; position: absolute; background: white; border: 1px solid #ddd; border-radius: 4px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); z-index: 100;">
+                            <a href="#" onclick="cleanupLogs(7); return false;" style="display: block; padding: 8px 16px; text-decoration: none; color: #2c3e50;">清理7天前</a>
+                            <a href="#" onclick="cleanupLogs(30); return false;" style="display: block; padding: 8px 16px; text-decoration: none; color: #2c3e50;">清理30天前</a>
+                            <a href="#" onclick="cleanupLogs(365); return false;" style="display: block; padding: 8px 16px; text-decoration: none; color: #2c3e50;">清理1年前</a>
+                            <a href="#" onclick="cleanupLogs(1825); return false;" style="display: block; padding: 8px 16px; text-decoration: none; color: #2c3e50;">清理5年前</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="filter-section">
+                <div class="filter-buttons" style="align-items: center;">
+                    <button class="filter-btn {% if not filter_username %}active{% endif %}" onclick="filterActivities('')">
+                        全部
+                    </button>
+                    <button class="filter-btn {% if filter_username == '未登录' %}active{% endif %}" data-filter="未登录" onclick="filterActivities('未登录')">
+                        未登录访问
+                    </button>
+                    <span style="color: #bdc3c7; margin: 0 4px;">|</span>
+                    <button class="filter-btn active" id="group-btn" onclick="toggleGroup()">
+                        折叠模式
+                    </button>
+                    <span id="user-filters-separator" style="color: #bdc3c7; margin: 0 4px; display: none;">|</span>
+                    <span id="user-filters" style="display: none;"></span>
+                </div>
+            </div>
+
+            <div class="table-container">
+                <table class="activity-table">
+                    <thead>
+                        <tr>
+                            <th>时间</th>
+                            <th>账号</th>
+                            <th>操作</th>
+                            <th>IP地址</th>
+                            <th>设备</th>
+                            <th>系统</th>
+                            <th>浏览器</th>
+                            <th>访问路径</th>
+                            <th>状态</th>
+                        </tr>
+                    </thead>
+                    <tbody id="activity-tbody">
+                        <tr>
+                            <td colspan="9" style="text-align: center; color: #7f8c8d; padding: 20px;">
+                                加载中...
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div style="margin-top: 20px;">
+            <a href="/admin" class="btn">返回仪表盘</a>
+        </div>
+    </div>
+
+    <script>
+        // HTML实体转义函数，防止XSS
+        function escapeHtml(str) {
+            if (!str) return '';
+            return String(str)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#039;');
+        }
+
+        // 当前筛选的用户名
+        let currentFilter = '{{ filter_username }}';
+        // 是否折叠模式
+        let isGrouped = true;
+        // 当前活动数据
+        let currentActivities = [];
+
+        // 筛选活动日志（使用 AJAX，不跳转页面）
+        function filterActivities(username) {
+            currentFilter = username;
+
+            // 更新筛选按钮的激活状态（跳过折叠模式按钮）
+            document.querySelectorAll('.filter-buttons .filter-btn').forEach(btn => {
+                if (btn.id === 'group-btn') return;
+                const filterValue = btn.dataset.filter || btn.textContent;
+                if (filterValue === username || (username === '' && filterValue === '全部')) {
+                    btn.classList.add('active');
+                } else {
+                    btn.classList.remove('active');
+                }
+            });
+
+            // 重新加载活动日志
+            loadActivities();
+        }
+
+        // 切换折叠/展开模式
+        function toggleGroup() {
+            isGrouped = !isGrouped;
+            const btn = document.getElementById('group-btn');
+            if (isGrouped) {
+                btn.textContent = '折叠模式';
+                btn.classList.add('active');
+            } else {
+                btn.textContent = '展开模式';
+                btn.classList.remove('active');
+            }
+            loadActivities();
+        }
+
+        // 加载活动日志
+        function loadActivities() {
+            const showAll = window.location.pathname === '/admin/activity/all';
+            const url = `/admin/activity/api?grouped=${isGrouped}&username=${encodeURIComponent(currentFilter)}&show_all=${showAll}`;
+            fetch(url)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success && data.activities) {
+                        currentActivities = data.activities;
+                        renderActivities(data.activities, data.grouped);
+                    }
+                })
+                .catch(error => {
+                    // 静默忽略加载失败
+                });
+        }
+
+        // 渲染活动日志
+        function renderActivities(activities, grouped) {
+            const tbody = document.getElementById('activity-tbody');
+            
+            if (activities.length === 0) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="9" style="text-align: center; color: #7f8c8d; padding: 20px;">
+                            暂无活动记录
+                        </td>
+                    </tr>
+                `;
+                return;
+            }
+
+            if (grouped) {
+                // 折叠模式
+                let html = '';
+                let detailIndex = 0;
+
+                activities.forEach((group, index) => {
+                    if (group.is_group) {
+                        // 可折叠的分组（count > 1）
+                        html += `
+                            <tr class="group-row" data-group-index="${detailIndex}">
+                                <td>
+                                    <span class="expand-icon">▶</span>
+                                    <span class="time-text">${escapeHtml(group.latest_time)}</span>
+                                </td>
+                                <td>
+                                    ${group.username === '未登录'
+                                        ? '<span class="status-not-logged-in">未登录</span>'
+                                        : `<span class="username-highlight">${escapeHtml(group.username)}</span>`}
+                                </td>
+                                <td>${escapeHtml(group.description)}</td>
+                                <td>${escapeHtml(group.ip)}</td>
+                                <td>${escapeHtml(group.device_type)}</td>
+                                <td>${escapeHtml(group.os)}</td>
+                                <td>${escapeHtml(group.browser)}</td>
+                                <td>
+                                    <div>
+                                        <div>${escapeHtml(group.path)}</div>
+                                        <div class="visit-count">
+                                            已访问 ${group.count} 次
+                                        </div>
+                                    </div>
+                                </td>
+                                <td>
+                                    ${group.is_logged_in
+                                        ? '<span class="status-badge status-logged-in">已登录</span>'
+                                        : '<span class="status-badge status-not-logged-in">未登录</span>'}
+                                </td>
+                            </tr>
+                            <tr class="detail-row" style="display: none;" data-group-index="${detailIndex}">
+                                <td colspan="9">
+                                    <div class="detail-header">详细访问记录：</div>
+                                    <div class="detail-list">
+                                        ${group.activities.map(a => `
+                                            <div class="detail-item">
+                                                <span class="detail-time">${escapeHtml(a.time)}</span>
+                                                <span class="detail-info">${escapeHtml(a.ip)}</span>
+                                                <span class="detail-info">${escapeHtml(a.device_type)}</span>
+                                                <span class="detail-info">${escapeHtml(a.browser)}</span>
+                                            </div>
+                                        `).join('')}
+                                    </div>
+                                </td>
+                            </tr>
+                        `;
+                        detailIndex++;
+                    } else {
+                        // 普通行（count == 1），渲染为单个记录
+                        const activity = group.activities[0];
+                        html += `
+                            <tr>
+                                <td>${escapeHtml(activity.time)}</td>
+                                <td>
+                                    ${activity.username === '未登录'
+                                        ? '<span class="status-not-logged-in">未登录</span>'
+                                        : `<span class="username-highlight">${escapeHtml(activity.username)}</span>`}
+                                </td>
+                                <td>${escapeHtml(activity.description)}</td>
+                                <td>${escapeHtml(activity.ip)}</td>
+                                <td>${escapeHtml(activity.device_type)}</td>
+                                <td>${escapeHtml(activity.os)}</td>
+                                <td>${escapeHtml(activity.browser)}</td>
+                                <td>${escapeHtml(activity.path)}</td>
+                                <td>
+                                    ${activity.is_logged_in
+                                        ? '<span class="status-badge status-logged-in">已登录</span>'
+                                        : '<span class="status-badge status-not-logged-in">未登录</span>'}
+                                </td>
+                            </tr>
+                        `;
+                    }
+                });
+
+                tbody.innerHTML = html;
+
+                // 添加点击展开/收起事件（只对可折叠的分组）
+                document.querySelectorAll('.group-row').forEach(row => {
+                    row.style.cursor = 'pointer';
+                    row.addEventListener('click', function() {
+                        const groupIndex = this.getAttribute('data-group-index');
+                        const detailRow = document.querySelector(`.detail-row[data-group-index="${groupIndex}"]`);
+                        const expandIcon = this.querySelector('.expand-icon');
+                        if (detailRow && expandIcon) {
+                            const isHidden = detailRow.style.display === 'none';
+                            detailRow.style.display = isHidden ? 'table-row' : 'none';
+                            expandIcon.style.transform = isHidden ? 'translateY(-50%) rotate(90deg)' : 'translateY(-50%) rotate(0deg)';
+                            this.classList.toggle('expanded', isHidden);
+                        }
+                    });
+                });
+            } else {
+                // 展开模式
+                tbody.innerHTML = activities.map(activity => `
+                    <tr>
+                        <td>${escapeHtml(activity.time)}</td>
+                        <td>
+                            ${activity.username === '未登录' 
+                                ? '<span style="color: #e74c3c;">未登录</span>' 
+                                : `<span class="username-highlight">${escapeHtml(activity.username)}</span>`}
+                        </td>
+                        <td>${escapeHtml(activity.description)}</td>
+                        <td>${escapeHtml(activity.ip)}</td>
+                        <td>${escapeHtml(activity.device_type)}</td>
+                        <td>${escapeHtml(activity.os)}</td>
+                        <td>${escapeHtml(activity.browser)}</td>
+                        <td>${escapeHtml(activity.path)}</td>
+                        <td>
+                            ${activity.is_logged_in 
+                                ? '<span class="status-badge status-logged-in">已登录</span>'
+                                : '<span class="status-badge status-not-logged-in">未登录</span>'}
+                        </td>
+                    </tr>
+                `).join('');
+            }
+        }
+
+        // 页面加载时加载数据
+        loadActivities();
+        loadUserList();
+
+        // 切换清理菜单显示
+        function toggleCleanupMenu() {
+            const menu = document.getElementById('cleanup-menu');
+            menu.style.display = menu.style.display === 'none' ? 'block' : 'none';
+        }
+
+        // 点击其他地方关闭菜单
+        document.addEventListener('click', function(e) {
+            const menu = document.getElementById('cleanup-menu');
+            if (menu && !e.target.closest('.dropdown')) {
+                menu.style.display = 'none';
+            }
+        });
+
+        // 加载用户列表（全量去重，不依赖当前页切片）
+        function loadUserList() {
+            fetch('/admin/activity/api?users_only=1')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success && data.users) {
+                        // 后端已去重的全量已登录用户名列表
+                        const users = data.users;
+
+                        // 动态生成用户筛选按钮
+                        const userFiltersSpan = document.getElementById('user-filters');
+                        const userFiltersSep = document.getElementById('user-filters-separator');
+                        userFiltersSpan.innerHTML = ''; // 清空现有按钮
+                        if (users.length > 0) {
+                            userFiltersSep.style.display = 'inline';
+                            userFiltersSpan.style.display = 'inline';
+                            users.forEach(user => {
+                                const btn = document.createElement('button');
+                                btn.className = 'filter-btn';
+                                if (currentFilter === user) {
+                                    btn.classList.add('active');
+                                }
+                                btn.textContent = user;
+                                btn.onclick = () => filterActivities(user);
+                                userFiltersSpan.appendChild(btn);
+                            });
+                        } else {
+                            userFiltersSep.style.display = 'none';
+                            userFiltersSpan.style.display = 'none';
+                        }
+                    }
+                })
+                .catch(error => {
+                    // 静默忽略加载失败
+                });
+        }
+    </script>
+
+    <!-- 自定义对话框模态框 -->
+    <div id="dialogModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 9999; justify-content: center; align-items: center;">
+        <div style="background: white; border-radius: 8px; padding: 24px; max-width: 400px; width: 90%; box-shadow: 0 4px 20px rgba(0,0,0,0.3);">
+            <div id="dialogMessage" style="font-size: 14px; color: #2c3e50; margin-bottom: 20px; line-height: 1.6;"></div>
+            <div style="display: flex; justify-content: flex-end; gap: 8px;">
+                <button id="dialogCancel" class="btn" style="background: #95a5a6;" onclick="closeDialog()">取消</button>
+                <button id="dialogConfirm" class="btn btn-success" onclick="confirmDialog()">确定</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 清理活动日志
+        function cleanupLogs(days) {
+            showConfirm(`确定要清理${days}天前的活动日志吗？此操作不可恢复。`, function(confirmed) {
+                if (!confirmed) return;
+
+                fetch('/admin/activity/api/cleanup', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-Token': getCsrfToken()
+                    },
+                    body: JSON.stringify({ days: days })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        showAlert(`已清理${days}天前的活动日志，共删除${data.deleted_count}条记录`);
+                        loadActivities();
+                    } else {
+                        showAlert('清理失败: ' + (data.message || '未知错误'));
+                    }
+                })
+                .catch(error => {
+                    showAlert('清理失败: 网络错误');
+                });
+
+                // 关闭菜单
+                document.getElementById('cleanup-menu').style.display = 'none';
+            });
+        }
+    </script>
+</body>
+</html>

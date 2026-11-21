@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" href="/static/favicon.ico">
+    <title>小说搜索</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Microsoft YaHei', sans-serif; }
+        body { background: #f5f7fa; color: #2c3e50; line-height: 1.6; padding: 20px; max-width: 1200px; margin: 0 auto; }
+        .header { text-align: center; margin: 30px 0; }
+        .header h1 { color: #2c3e50; font-size: 2.5rem; margin-bottom: 10px; }
+        .search-box { max-width: 600px; margin: 0 auto 40px; position: relative; }
+        .search-input { width: 100%; padding: 12px 20px; font-size: 1.1rem; border: 2px solid #3498db; border-radius: 30px; outline: none; }
+        .search-btn { position: absolute; right: 5px; top: 5px; background: #3498db; color: white; border: none; padding: 8px 20px; border-radius: 25px; cursor: pointer; font-size: 1rem; }
+        .search-btn:hover { background: #2980b9; }
+        .book-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(500px, 1fr)); gap: 25px; }
+        .book-card { background: white; border-radius: 10px; box-shadow: 0 5px 15px rgba(0,0,0,0.1); overflow: hidden; transition: transform 0.3s; display: flex; }
+        .book-card:hover { transform: translateY(-5px); box-shadow: 0 8px 20px rgba(0,0,0,0.15); }
+        .book-cover { width: 140px; flex-shrink: 0; background: #eee; display: flex; align-items: center; justify-content: center; color: #999; position: relative; overflow: hidden; }
+        .book-cover::before { content: ''; display: block; padding-top: 133.33%; }
+        .book-cover img { position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; }
+        .book-cover.no-image { background: #f0f0f0; color: #999; font-size: 0.9rem; }
+        .book-info { padding: 20px; flex: 1; }
+        .book-title { font-size: 1.3rem; color: #2c3e50; margin-bottom: 8px; }
+        .book-meta { color: #7f8c8d; margin-bottom: 12px; font-size: 0.95rem; }
+        .book-description { color: #555; margin-bottom: 15px; line-height: 1.6; font-size: 0.95rem; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+        .book-link { display: inline-block; background: #3498db; color: white; padding: 8px 20px; border-radius: 4px; text-decoration: none; font-weight: bold; }
+        .book-link:hover { background: #2980b9; }
+        .no-results { text-align: center; padding: 40px; font-size: 1.2rem; color: #7f8c8d; }
+        .back-link { display: inline-block; margin-top: 10px; color: #3498db; text-decoration: none; }
+        .back-link:hover { color: #2980b9; }
+        
+        /* 暗夜模式 */
+        body.dark-mode { background: #1a1a1a; color: #e0e0e0; }
+        body.dark-mode .header h1 { color: #e0e0e0; }
+        body.dark-mode .search-input { background: #2d2d2d; border-color: #4d4d4d; color: #e0e0e0; }
+        body.dark-mode .search-input::placeholder { color: #6d6d6d; }
+        body.dark-mode .book-card { background: #2d2d2d; box-shadow: 0 5px 15px rgba(0,0,0,0.3); }
+        body.dark-mode .book-cover { background: #3d3d3d; }
+        body.dark-mode .book-title { color: #e0e0e0; }
+        body.dark-mode .book-meta { color: #a0a0a0; }
+        body.dark-mode .book-description { color: #a0a0a0; }
+        body.dark-mode .no-results { color: #a0a0a0; }
+
+        @media (max-width: 768px) {
+            .header h1 { font-size: 1.8rem; }
+            .book-list { grid-template-columns: 1fr; }
+            .book-card { flex-direction: column; }
+            .book-cover { width: 100%; max-width: 240px; margin: 0 auto; }
+        }
+        
+        @media (max-width: 550px) {
+            .book-list { grid-template-columns: 1fr; gap: 20px; }
+            .search-input { font-size: 1rem; padding: 10px 15px; }
+            .search-btn { padding: 6px 15px; font-size: 0.9rem; }
+        }
+        
+        @media (max-width: 400px) {
+            body { padding: 15px; }
+            .header { margin: 20px 0; }
+            .header h1 { font-size: 1.5rem; }
+            .book-card { border-radius: 8px; }
+            .book-info { padding: 15px; }
+            .book-title { font-size: 1.1rem; }
+            .book-meta, .book-description { font-size: 0.85rem; }
+            .book-link { padding: 6px 15px; font-size: 0.9rem; }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>小说搜索</h1>
+        <p>查找您喜欢的小说</p>
+        <a href="/" class="back-link">&larr; 返回主页</a>
+    </div>
+
+    <div class="search-box">
+        <form action="/book/search" method="get">
+            <input type="text" name="q" class="search-input" placeholder="输入书名或作者..." value="{{ search_term }}">
+            <button type="submit" class="search-btn">搜索</button>
+        </form>
+    </div>
+
+    {% if path_empty %}
+    <div style="text-align: center; padding: 60px 20px; color: #95a5a6; font-size: 14px;">
+        该功能未配置，请联系管理员配置路径
+    </div>
+    {% else %}
+    <div class="book-list">
+        {% if books %}
+            {% for book in books %}
+            <div class="book-card">
+                <div class="book-cover">
+                    <img src="/book/static/{{ book.cover|urlencode }}" onerror="this.style.display='none';this.parentElement.classList.add('no-image');this.parentElement.textContent='No image';" alt="{{ book.title }}">
+                </div>
+                <div class="book-info">
+                    <h2 class="book-title">{{ book.title }}</h2>
+                    <div class="book-meta">作者: {{ book.author }} | ID: {{ book.id }}</div>
+                    <p class="book-description">{{ book.description }}</p>
+                    <a href="/book/{{ book.id }}" class="book-link">查看详情</a>
+                </div>
+            </div>
+            {% endfor %}
+        {% else %}
+            <div class="no-results">没有找到匹配的书籍</div>
+        {% endif %}
+    </div>
+    {% endif %}
+
+    {% if total_pages is defined and total_pages > 1 %}
+    <div class="pagination" style="text-align: center; margin: 30px 0; display: flex; justify-content: center; gap: 8px; flex-wrap: wrap;">
+        {% if page > 1 %}
+        <a href="/book/search?q={{ search_term|urlencode }}&page={{ page - 1 }}" class="page-btn" style="padding: 8px 16px; background: #3498db; color: white; border-radius: 4px; text-decoration: none;">上一页</a>
+        {% endif %}
+        
+        {% for p in range(1, total_pages + 1) %}
+            {% if p == page %}
+            <span class="page-btn active" style="padding: 8px 16px; background: #2c3e50; color: white; border-radius: 4px;">{{ p }}</span>
+            {% elif p == 1 or p == total_pages or (p >= page - 2 and p <= page + 2) %}
+            <a href="/book/search?q={{ search_term|urlencode }}&page={{ p }}" class="page-btn" style="padding: 8px 16px; background: #3498db; color: white; border-radius: 4px; text-decoration: none;">{{ p }}</a>
+            {% elif p == page - 3 or p == page + 3 %}
+            <span style="padding: 8px 16px;">...</span>
+            {% endif %}
+        {% endfor %}
+        
+        {% if page < total_pages %}
+        <a href="/book/search?q={{ search_term|urlencode }}&page={{ page + 1 }}" class="page-btn" style="padding: 8px 16px; background: #3498db; color: white; border-radius: 4px; text-decoration: none;">下一页</a>
+        {% endif %}
+    </div>
+    <div style="text-align: center; color: #7f8c8d; font-size: 14px; margin-bottom: 20px;">
+        共 {{ total }} 本书，第 {{ page }}/{{ total_pages }} 页
+    </div>
+    {% endif %}
+    
+    <script>
+        // 检查 Cookie 中的暗夜模式设置
+        function checkDarkMode() {
+            const darkMode = getCookie('darkMode') === 'true';
+            applyDarkMode(darkMode);
+        }
+        
+        // 应用暗夜模式
+        function applyDarkMode(darkMode) {
+            if (darkMode) {
+                document.body.classList.add('dark-mode');
+            } else {
+                document.body.classList.remove('dark-mode');
+            }
+        }
+        
+        // 获取 Cookie
+        function getCookie(name) {
+            const value = `; ${document.cookie}`;
+            const parts = value.split(`; ${name}=`);
+            if (parts.length === 2) return parts.pop().split(';').shift();
+            return '';
+        }
+        
+        // 页面加载时检查暗夜模式
+        checkDarkMode();
+    </script>
+</body>
+</html>

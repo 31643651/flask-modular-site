@@ -1,0 +1,21 @@
+{
+  "description": "收藏 API 状态码矩阵（B6 锚定）：未登录 401、参数错误 400、成功 200；并锚定成功响应体的必需键与类型。多余键允许，必需键缺失或类型不符即失败。",
+  "status_codes": {
+    "check_unauthenticated": 401,
+    "add_unauthenticated": 401,
+    "remove_unauthenticated": 401,
+    "add_empty_path": 400,
+    "remove_empty_path": 400,
+    "add_success": 200,
+    "remove_success": 200,
+    "check_success": 200
+  },
+  "mutate_success_body": {
+    "success": "bool",
+    "message": "str"
+  },
+  "check_success_body": {
+    "success": "bool",
+    "is_favorite": "bool"
+  }
+}

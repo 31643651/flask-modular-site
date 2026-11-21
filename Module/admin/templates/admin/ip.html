@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" href="/static/favicon.ico">
+    <title>封禁 IP 管理</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Microsoft YaHei', sans-serif; }
+        body { background: #f5f7fa; color: #2c3e50; line-height: 1.5; display: flex; min-height: 100vh; }
+        .sidebar { width: 220px; background: white; display: flex; flex-direction: column; flex-shrink: 0; border-right: 1px solid #e0e0e0; }
+        .sidebar-header { padding: 20px; border-bottom: 1px solid #e0e0e0; }
+        .sidebar-title { font-size: 18px; font-weight: 500; }
+        .sidebar-nav { flex: 1; padding: 10px 0; }
+        .nav-item { padding: 12px 20px; cursor: pointer; color: #7f8c8d; font-size: 14px; display: flex; align-items: center; text-decoration: none; }
+        .nav-item:hover { background: #f5f7fa; color: #2c3e50; }
+        .nav-item.active { background: #3498db; color: white; }
+        .main-content { flex: 1; padding: 20px; overflow-y: auto; }
+        .page-title { font-size: 20px; font-weight: 500; margin-bottom: 20px; }
+        .card { background: white; border-radius: 6px; padding: 16px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        table { width: 100%; border-collapse: collapse; font-size: 14px; }
+        th, td { padding: 12px; text-align: left; border-bottom: 1px solid #eee; }
+        th { color: #7f8c8d; font-weight: 500; }
+        .btn { padding: 6px 14px; background: #e74c3c; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 13px; }
+        .btn:hover { background: #c0392b; }
+        .empty { color: #7f8c8d; padding: 30px; text-align: center; }
+        .tag { display: inline-block; padding: 2px 10px; border-radius: 3px; font-size: 12px; background: #fdf0ef; color: #e74c3c; }
+        .tag.permanent { background: #f9e7e5; color: #c0392b; }
+        body.dark-mode { background: #1a1a1a; color: #e0e0e0; }
+        body.dark-mode .sidebar { background: #2d2d2d; border-right: 1px solid #4d4d4d; }
+        body.dark-mode .card { background: #2d2d2d; }
+        body.dark-mode th, body.dark-mode td { border-color: #4d4d4d; }
+        body.dark-mode .nav-item { color: #a0a0a0; }
+        body.dark-mode .nav-item:hover { background: #3d3d3d; color: #e0e0e0; }
+        @media (max-width: 768px) {
+            body { flex-direction: column; }
+            .sidebar { width: 100%; }
+            .sidebar-nav { display: flex; overflow-x: auto; }
+            .nav-item { flex-shrink: 0; }
+        }
+    </style>
+</head>
+<body>
+    <div class="sidebar">
+        <div class="sidebar-header"><div class="sidebar-title">控制台</div></div>
+        <div class="sidebar-nav">
+            <a href="/admin" class="nav-item">仪表盘</a>
+            <a href="/admin/ip" class="nav-item active">封禁 IP</a>
+            <a href="/admin/config" class="nav-item">配置管理</a>
+            <a href="/admin/setting" class="nav-item">系统设置</a>
+            <a href="/admin/activity" class="nav-item">活动日志</a>
+            <a href="/admin/users" class="nav-item">活动账户</a>
+            <a href="/admin/userfix" class="nav-item">用户反馈</a>
+        </div>
+    </div>
+    <div class="main-content">
+        <div class="page-title">服务器 > 封禁 IP</div>
+        <div class="card">
+            <table>
+                <thead>
+                    <tr>
+                        <th>IP 地址</th>
+                        <th>封禁类型</th>
+                        <th>封禁原因</th>
+                        <th>封禁时间</th>
+                        <th>剩余时间</th>
+                        <th>操作</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% if bans %}
+                        {% for b in bans %}
+                        <tr>
+                            <td>{{ b.ip }}</td>
+                            <td>
+                                {% if b.is_permanent %}
+                                    <span class="tag permanent">永久</span>
+                                {% else %}
+                                    <span class="tag">临时</span>
+                                {% endif %}
+                            </td>
+                            <td>{{ b.ban_reason_label }}</td>
+                            <td>{{ b.created_at }}</td>
+                            <td>
+                                {% if b.is_permanent %}永久{% elif b.remaining_seconds is not none %}{{ b.remaining_seconds }} 秒{% else %}-{% endif %}
+                            </td>
+                            <td>
+                                <button class="btn" data-ip="{{ b.ip }}" onclick="unban(this.dataset.ip)">解除封禁</button>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    {% else %}
+                        <tr><td colspan="6" class="empty">暂无封禁记录</td></tr>
+                    {% endif %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    <script>
+        function getCsrfToken() {
+            const v = document.cookie.split('; ').find(r => r.startsWith('csrf_token='));
+            return v ? v.split('=')[1] : '';
+        }
+        function unban(ip) {
+            if (!confirm('确定解除 ' + ip + ' 的封禁吗？')) return;
+            fetch('/admin/ip/unban', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': getCsrfToken() },
+                body: JSON.stringify({ ip: ip })
+            }).then(function (r) { return r.json(); })
+              .then(function (data) {
+                if (data.success) { location.reload(); }
+                else { alert(data.message || '解除失败'); }
+              });
+        }
+    </script>
+    <script>
+        function getCookie(name) { const v = document.cookie.split('; ').find(r => r.startsWith(name + '=')); return v ? v.split('=')[1] : ''; }
+        if (getCookie('darkMode') === 'true') { document.body.classList.add('dark-mode'); }
+    </script>
+</body>
+</html>

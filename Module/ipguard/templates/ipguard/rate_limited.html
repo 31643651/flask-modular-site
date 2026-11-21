@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" href="/static/favicon.ico">
+    <title>访问过于频繁</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Microsoft YaHei', sans-serif; }
+        body { background: #f5f7fa; color: #2c3e50; min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 20px; }
+        .card { background: #ffffff; border-radius: 8px; padding: 40px; max-width: 480px; width: 100%; text-align: center; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        .icon { width: 56px; height: 56px; line-height: 56px; border-radius: 50%; background: #f39c12; color: #fff; font-size: 30px; margin: 0 auto 20px; font-weight: 700; }
+        .title { font-size: 20px; font-weight: 500; margin-bottom: 12px; }
+        .desc { font-size: 14px; color: #7f8c8d; margin-bottom: 16px; line-height: 1.6; }
+        .countdown { font-size: 24px; font-weight: 700; color: #f39c12; }
+        body.dark-mode { background: #1a1a1a; color: #e0e0e0; }
+        body.dark-mode .card { background: #2d2d2d; box-shadow: 0 2px 10px rgba(0,0,0,0.5); }
+        body.dark-mode .desc { color: #a0a0a0; }
+        @media (max-width: 480px) { .card { padding: 30px 20px; } }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <div class="icon">i</div>
+        <div class="title">刷新太快，请稍后再试</div>
+        <div class="desc">您的请求过于频繁，{{ wait_seconds }} 秒后将自动恢复访问。</div>
+        <div class="countdown"><span id="countdown">{{ wait_seconds }}</span>&nbsp;秒</div>
+    </div>
+    <script>
+        (function () {
+            let remain = parseInt(document.getElementById('countdown').textContent, 10);
+            setInterval(function () {
+                remain = Math.max(0, remain - 1);
+                document.getElementById('countdown').textContent = remain;
+                if (remain <= 0) { location.reload(); }
+            }, 1000);
+        })();
+    </script>
+    <script>
+        function getCookie(name) { const v = document.cookie.split('; ').find(r => r.startsWith(name + '=')); return v ? v.split('=')[1] : ''; }
+        if (getCookie('darkMode') === 'true') { document.body.classList.add('dark-mode'); }
+    </script>
+</body>
+</html>

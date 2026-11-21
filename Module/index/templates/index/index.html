@@ -1,0 +1,1179 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" href="/static/favicon.ico">
+    {% if wallpaper_url %}
+    <link rel="preload" as="image" href="{{ wallpaper_url }}">
+    {% endif %}
+    <title>首页导航</title>
+    <script src="/static/common/ui.js"></script>
+    <link rel="stylesheet" href="/static/common/dark-mode.css">
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        html {
+            font-size: 16px;
+        }
+
+        body {
+            font-family: 'Microsoft YaHei', 'PingFang SC', sans-serif;
+            background: #f5f7fa;
+            color: #2c3e50;
+            line-height: 1.6;
+            padding: 20px;
+            min-height: 100vh;
+        }
+
+        .settings-btn {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: transparent;
+            color: #666;
+            border: none;
+            width: 32px;
+            height: 32px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: color 0.3s, transform 0.3s, opacity 0.3s;
+            z-index: 1000;
+        }
+        
+        .settings-btn:hover {
+            color: #333;
+            transform: rotate(90deg);
+        }
+        
+        .settings-btn.hidden {
+            opacity: 0;
+            pointer-events: none;
+        }
+        
+        .settings-btn svg {
+            width: 24px;
+            height: 24px;
+            fill: currentColor;
+        }
+        
+        .settings-panel {
+            position: fixed;
+            top: 0;
+            right: -100vw;
+            width: 400px;
+            max-width: 90vw;
+            height: 100vh;
+            background: white;
+            box-shadow: -5px 0 20px rgba(0,0,0,0.2);
+            transition: right 0.3s ease;
+            z-index: 999;
+            overflow-y: auto;
+            padding: 30px;
+        }
+        
+        .settings-panel.open {
+            right: 0 !important;
+        }
+        
+        .overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s;
+            z-index: 998;
+        }
+        
+        .overlay.open {
+            opacity: 1;
+            visibility: visible;
+        }
+        
+        .settings-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid #eee;
+        }
+        
+        .settings-title {
+            font-size: 24px;
+            color: #2c3e50;
+            font-weight: 600;
+        }
+        
+        .close-btn {
+            background: none;
+            border: none;
+            font-size: 28px;
+            color: #7f8c8d;
+            cursor: pointer;
+            transition: color 0.2s;
+            padding: 0;
+            line-height: 1;
+            width: 32px;
+            height: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .close-btn:hover {
+            color: #e74c3c;
+        }
+        
+        .setting-item {
+            margin-bottom: 25px;
+        }
+        
+        .setting-label {
+            display: block;
+            font-size: 14px;
+            color: #2c3e50;
+            margin-bottom: 10px;
+            font-weight: 500;
+        }
+        
+        .setting-input-group {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+        
+        .setting-number {
+            width: 80px;
+            padding: 8px 12px;
+            border: 2px solid #ddd;
+            border-radius: 6px;
+            font-size: 16px;
+            text-align: center;
+        }
+        
+        .setting-slider {
+            flex: 1;
+            height: 8px;
+            -webkit-appearance: none;
+            appearance: none;
+            background: #ddd;
+            border-radius: 4px;
+            outline: none;
+        }
+        
+        .setting-slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 20px;
+            height: 20px;
+            background: #3498db;
+            border-radius: 50%;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        
+        .setting-slider::-webkit-slider-thumb:hover {
+            background: #2980b9;
+        }
+        
+        .setting-slider::-moz-range-thumb {
+            width: 20px;
+            height: 20px;
+            background: #3498db;
+            border-radius: 50%;
+            cursor: pointer;
+            border: none;
+        }
+        
+        .setting-unit {
+            font-size: 14px;
+            color: #7f8c8d;
+            min-width: 30px;
+        }
+        
+        /* 开关样式 */
+        .toggle-switch {
+            position: relative;
+            display: inline-block;
+            width: 50px;
+            height: 26px;
+        }
+        
+        .toggle-switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+        
+        .toggle-slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #ccc;
+            transition: .4s;
+            border-radius: 26px;
+        }
+        
+        .toggle-slider:before {
+            position: absolute;
+            content: "";
+            height: 20px;
+            width: 20px;
+            left: 3px;
+            bottom: 3px;
+            background-color: white;
+            transition: .4s;
+            border-radius: 50%;
+        }
+        
+        input:checked + .toggle-slider {
+            background-color: #3498db;
+        }
+        
+        input:checked + .toggle-slider:before {
+            transform: translateX(24px);
+        }
+        
+        /* 壁纸样式 */
+        #wallpaper {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+            z-index: -1;
+            display: none;
+        }
+        
+        #wallpaper.active {
+            display: block;
+        }
+        
+        .wallpaper-upload {
+            margin-top: 15px;
+        }
+        
+        .wallpaper-upload input {
+            display: none;
+        }
+        
+        .upload-btn {
+            display: inline-block;
+            padding: 8px 16px;
+            background: #3498db;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: background 0.2s;
+        }
+        
+        .upload-btn:hover {
+            background: #2980b9;
+        }
+        
+        .remove-btn {
+            display: inline-block;
+            padding: 8px 16px;
+            background: #e74c3c;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            margin-left: 10px;
+            transition: background 0.2s;
+        }
+        
+        .remove-btn:hover {
+            background: #c0392b;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+            padding: 40px 20px 20px;
+        }
+
+        .header h1 {
+            color: #2c3e50;
+            font-size: 24px;
+            margin-bottom: 10px;
+            font-weight: 600;
+        }
+
+        .nav-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+            gap: 20px;
+        }
+
+        .nav-item {
+            background: white;
+            padding: 30px 25px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            transition: all 0.2s;
+            text-align: center;
+            cursor: pointer;
+            text-decoration: none;
+            display: block;
+            color: #2c3e50;
+        }
+
+        .nav-item:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+        }
+
+        .nav-item:active {
+            transform: translateY(0);
+        }
+
+        .nav-item a {
+            text-decoration: none;
+            color: #3498db;
+            font-size: 18px;
+            font-weight: 500;
+            display: block;
+        }
+        
+.nav-item a:hover {
+            color: #2980b9;
+        }
+
+        .footer {
+            text-align: center;
+            margin-top: 50px;
+            padding-top: 20px;
+            border-top: 1px solid #eee;
+            color: #95a5a6;
+            font-size: 12px;
+        }
+
+        /* 平板端适配 (768px - 1024px) */
+        @media (max-width: 1024px) {
+            .container {
+                max-width: 768px;
+            }
+
+            .nav-grid {
+                grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+                gap: 15px;
+            }
+        }
+
+        /* 移动端适配 (< 768px) */
+        @media (max-width: 768px) {
+            body {
+                padding: 10px;
+            }
+
+            .container {
+                padding: 15px 10px;
+            }
+
+            .header {
+                margin-bottom: 30px;
+                padding: 30px 10px 15px;
+            }
+
+            .header h1 {
+                font-size: 20px;
+            }
+
+            .nav-grid {
+                grid-template-columns: repeat(2, 1fr);
+                gap: 12px;
+            }
+
+            .nav-item {
+                padding: 25px 15px;
+            }
+
+            .nav-item a {
+                font-size: 16px;
+            }
+
+            .footer {
+                margin-top: 40px;
+                padding-top: 15px;
+                font-size: 11px;
+            }
+        }
+
+        /* 小屏移动端适配 (< 480px) */
+        @media (max-width: 480px) {
+            .nav-grid {
+                grid-template-columns: 1fr;
+                gap: 10px;
+            }
+
+            .nav-item {
+                padding: 20px 25px;
+            }
+
+            .nav-item a {
+                font-size: 17px;
+            }
+        }
+
+        /* 横屏优化 */
+        @media (max-height: 500px) and (orientation: landscape) {
+            .header {
+                margin-bottom: 20px;
+                padding: 15px 10px;
+            }
+
+            .header h1 {
+                font-size: 18px;
+            }
+
+            .nav-grid {
+                gap: 15px;
+            }
+
+            .footer {
+                margin-top: 20px;
+            }
+        }
+        
+        /* 暗夜模式 */
+        body.dark-mode {
+            background: #1a1a1a;
+            color: #e0e0e0;
+        }
+        
+        body.dark-mode .header h1 {
+            color: #e0e0e0;
+        }
+        
+        body.dark-mode .nav-item {
+            background: #2d2d2d;
+            color: #e0e0e0;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+        }
+        
+        body.dark-mode .nav-item:hover {
+            box-shadow: 0 4px 8px rgba(0,0,0,0.4);
+        }
+        
+        body.dark-mode .nav-item a {
+            color: #3498db;
+        }
+        
+        body.dark-mode .nav-item a:hover {
+            color: #2980b9;
+        }
+        
+        body.dark-mode .footer {
+            color: #a0a0a0;
+            border-top: 1px solid #4d4d4d;
+        }
+        
+        body.dark-mode .settings-panel {
+            background: #2d2d2d;
+            box-shadow: -5px 0 20px rgba(0,0,0,0.5);
+        }
+        
+        body.dark-mode .settings-title {
+            color: #e0e0e0;
+        }
+        
+        body.dark-mode .close-btn {
+            color: #a0a0a0;
+        }
+        
+        body.dark-mode .close-btn:hover {
+            color: #e74c3c;
+        }
+        
+        body.dark-mode .setting-label {
+            color: #e0e0e0;
+        }
+        
+        body.dark-mode .setting-number {
+            background: #3d3d3d;
+            border-color: #4d4d4d;
+            color: #e0e0e0;
+        }
+        
+        body.dark-mode .setting-slider {
+            background: #4d4d4d;
+        }
+        
+        body.dark-mode .setting-unit {
+            color: #a0a0a0;
+        }
+        
+        body.dark-mode .settings-btn {
+            color: #a0a0a0;
+        }
+        
+        body.dark-mode .settings-btn:hover {
+            color: #e0e0e0;
+        }
+
+        /* 反馈弹窗样式 */
+        .feedback-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 1001;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .feedback-modal.active {
+            display: flex;
+        }
+
+        .feedback-modal-content {
+            background: white;
+            border-radius: 8px;
+            width: 90%;
+            max-width: 500px;
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+
+        .feedback-modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 20px 25px;
+            border-bottom: 1px solid #eee;
+        }
+
+        .feedback-modal-header h2 {
+            margin: 0;
+            color: #2c3e50;
+            font-size: 18px;
+        }
+
+        .feedback-modal-close {
+            background: none;
+            border: none;
+            font-size: 28px;
+            color: #7f8c8d;
+            cursor: pointer;
+            padding: 0;
+            width: 32px;
+            height: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .feedback-modal-close:hover {
+            color: #e74c3c;
+        }
+
+        .feedback-modal-body {
+            padding: 25px;
+        }
+
+        .feedback-limit-info {
+            background: #e8f4f8;
+            color: #2980b9;
+            padding: 10px 15px;
+            border-radius: 6px;
+            margin-bottom: 20px;
+            font-size: 14px;
+            text-align: center;
+        }
+
+        .feedback-limit-info #remainingCount {
+            font-weight: bold;
+            font-size: 18px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            color: #2c3e50;
+            font-weight: 500;
+            font-size: 14px;
+        }
+
+        .form-group textarea {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #ddd;
+            border-radius: 6px;
+            font-size: 14px;
+            font-family: 'Microsoft YaHei', sans-serif;
+            resize: vertical;
+            outline: none;
+        }
+
+        .form-group textarea:focus {
+            border-color: #3498db;
+        }
+
+        .form-group input[type="file"] {
+            width: 100%;
+            padding: 8px;
+            border: 2px solid #ddd;
+            border-radius: 6px;
+            font-size: 14px;
+        }
+
+        .form-group input[type="file"]:focus {
+            border-color: #3498db;
+            outline: none;
+        }
+
+        .image-preview {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        .image-preview-item {
+            position: relative;
+            width: 100%;
+            padding-bottom: 100%;
+            border-radius: 6px;
+            overflow: hidden;
+            background: #f5f7fa;
+        }
+
+        .image-preview-item img {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .image-preview-item .remove-btn {
+            position: absolute;
+            top: 4px;
+            right: 4px;
+            background: rgba(231, 76, 60, 0.9);
+            color: white;
+            border: none;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+            padding: 0;
+        }
+
+        .feedback-submit-btn {
+            width: 100%;
+            padding: 12px;
+            background: #3498db;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-size: 16px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .feedback-submit-btn:hover {
+            background: #2980b9;
+        }
+
+        .feedback-submit-btn:disabled {
+            background: #95a5a6;
+            cursor: not-allowed;
+        }
+
+        /* 暗夜模式 */
+        body.dark-mode .feedback-modal-content {
+            background: #2d2d2d;
+        }
+
+        body.dark-mode .feedback-modal-header {
+            border-bottom-color: #4d4d4d;
+        }
+
+        body.dark-mode .feedback-modal-header h2 {
+            color: #e0e0e0;
+        }
+
+        body.dark-mode .feedback-modal-close {
+            color: #a0a0a0;
+        }
+
+        body.dark-mode .feedback-modal-close:hover {
+            color: #e74c3c;
+        }
+
+        body.dark-mode .feedback-limit-info {
+            background: #1e4a5a;
+            color: #3498db;
+        }
+
+        body.dark-mode .form-group label {
+            color: #e0e0e0;
+        }
+
+        body.dark-mode .form-group textarea {
+            background: #3d3d3d;
+            border-color: #4d4d4d;
+            color: #e0e0e0;
+        }
+
+        body.dark-mode .form-group textarea:focus {
+            border-color: #3498db;
+        }
+
+        body.dark-mode .form-group input[type="file"] {
+            background: #3d3d3d;
+            border-color: #4d4d4d;
+            color: #e0e0e0;
+        }
+
+        body.dark-mode .form-group input[type="file"]:focus {
+            border-color: #3498db;
+        }
+
+        body.dark-mode .image-preview-item {
+            background: #3d3d3d;
+        }
+    </style>
+</head>
+<body>
+    <button class="settings-btn" onclick="toggleSettings()" title="设置">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+                    <path d="M19.14,12.94c0.04-0.3,0.06-0.61,0.06-0.94c0-0.32-0.02-0.64-0.07-0.94l2.03-1.58c0.18-0.14,0.23-0.41,0.12-0.61 l-1.92-3.32c-0.12-0.22-0.37-0.29-0.59-0.22l-2.39,0.96c-0.5-0.38-1.03-0.7-1.62-0.94L14.4,2.81c-0.04-0.24-0.24-0.41-0.48-0.41 h-3.84c-0.24,0-0.43,0.17-0.47,0.41L9.25,5.35C8.66,5.59,8.12,5.92,7.63,6.29L5.24,5.33c-0.22-0.08-0.47,0-0.59,0.22L2.74,8.87 C2.62,9.08,2.66,9.34,2.86,9.48l2.03,1.58C4.84,11.36,4.8,11.69,4.8,12s0.02,0.64,0.07,0.94l-2.03,1.58 c-0.18,0.14-0.23,0.41-0.12,0.61l1.92,3.32c0.12,0.22,0.37,0.29,0.59,0.22l2.39-0.96c0.5,0.38,1.03,0.7,1.62,0.94l0.36,2.54 c0.05,0.24,0.24,0.41,0.48,0.41h3.84c0.24,0,0.44-0.17,0.47-0.41l0.36-2.54c0.59-0.24,1.13-0.56,1.62-0.94l2.39,0.96 c0.22,0.08,0.47,0,0.59-0.22l1.92-3.32c0.12-0.22,0.07-0.47-0.12-0.61L19.14,12.94z M12,15.6c-1.98,0-3.6-1.62-3.6-3.6 s1.62-3.6,3.6-3.6s3.6,1.62,3.6,3.6S13.98,15.6,12,15.6z"/>
+                </svg>
+            </button>
+    
+    <div class="overlay" id="overlay" onclick="toggleSettings()"></div>
+    
+    <div class="settings-panel" id="settingsPanel">
+        <div class="settings-header">
+            <h2 class="settings-title">设置</h2>
+            <button class="close-btn" onclick="toggleSettings()">×</button>
+        </div>
+        
+        <div class="setting-item">
+            <label class="setting-label">设置面板宽度</label>
+            <div class="setting-input-group">
+                <input type="number" class="setting-number" id="panelWidth" min="20" max="100" value="25">
+                <input type="range" class="setting-slider" id="panelWidthSlider" min="20" max="100" value="25">
+                <span class="setting-unit">%</span>
+            </div>
+        </div>
+        
+        <div class="setting-item">
+            <label class="setting-label">使用壁纸</label>
+            <label class="toggle-switch">
+                <input type="checkbox" id="wallpaperToggle">
+                <span class="toggle-slider"></span>
+            </label>
+        </div>
+    </div>
+    
+    {% if settings.wallpaper_enabled != false %}
+    <div id="wallpaper"{% if wallpaper_url %} class="active" style="background-image: url('{{ wallpaper_url }}');"{% endif %}></div>
+    {% endif %}
+    
+    <div class="container">
+        <div class="header">
+            <h1>首页导航</h1>
+        </div>
+
+        <div class="nav-grid">
+            {% if settings.books_enabled != false %}
+            <a href="/book" class="nav-item">书籍</a>
+            {% endif %}
+            {% if settings.gallery_enabled != false %}
+            <a href="/gallery" class="nav-item">图片库</a>
+            {% endif %}
+            {% if user and user.role == 'admin' %}
+            <a href="/admin" class="nav-item">管理控制台</a>
+            {% endif %}
+            <a href="/user" class="nav-item">用户管理</a>
+            {# ADR-0012：挂载入口服务端渲染，随 HTML 立即可见 #}
+            {% for page in mounted_pages %}
+            <a href="/{{ page.name }}" class="nav-item">{{ page.name }}</a>
+            {% endfor %}
+        </div>
+
+        <div class="footer">
+            <p>欢迎使用</p>
+            <p style="margin-top: 10px;">
+                <a href="javascript:void(0)" onclick="openFeedbackModal()" style="color: #3498db; text-decoration: none; font-size: 12px;">Bug 提交 / 功能增加</a>
+            </p>
+        </div>
+    </div>
+
+    <!-- 反馈弹窗 -->
+    <div class="feedback-modal" id="feedbackModal">
+        <div class="feedback-modal-content">
+            <div class="feedback-modal-header">
+                <h2>Bug 提交 / 功能增加</h2>
+                <button class="feedback-modal-close" onclick="closeFeedbackModal()">×</button>
+            </div>
+            <div class="feedback-modal-body">
+                <div class="feedback-limit-info" id="feedbackLimitInfo">
+                    <span id="remainingCount">--</span> 次提交机会
+                </div>
+                <form id="feedbackForm">
+                    <div class="form-group">
+                        <label for="feedbackText">内容描述</label>
+                        <textarea id="feedbackText" name="text" rows="5" required placeholder="请详细描述您遇到的问题或想要增加的功能..."></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label for="feedbackImages">上传图片（最多6张）</label>
+                        <input type="file" id="feedbackImages" name="images" multiple accept="image/*" onchange="previewImages()">
+                        <div class="image-preview" id="imagePreview"></div>
+                    </div>
+                    <button type="submit" class="feedback-submit-btn">提交</button>
+                </form>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        // 设置 Cookie
+        function setCookie(name, value, days) {
+            const date = new Date();
+            date.setTime(date.getTime() + (days * 24 * 60 * 60 * 1000));
+            const expires = `expires=${date.toUTCString()}`;
+            document.cookie = `${name}=${value};${expires};path=/`;
+        }
+        
+        // 切换设置面板
+        function toggleSettings() {
+            const panel = document.getElementById('settingsPanel');
+            const overlay = document.getElementById('overlay');
+            const settingsBtn = document.querySelector('.settings-btn');
+            
+            const isOpen = panel.classList.contains('open');
+            
+            if (isOpen) {
+                // 关闭面板：先移除 open，再统一由 setPanelWidth 计算关闭位置
+                panel.classList.remove('open');
+                setPanelWidth(parseInt(panel.style.width) || 25);
+            } else {
+                // 打开面板
+                panel.style.right = '0';
+                panel.classList.add('open');
+            }
+            
+            overlay.classList.toggle('open');
+            settingsBtn.classList.toggle('hidden');
+            
+        }
+        
+        // 设置面板宽度
+        function setPanelWidth(percentage) {
+            const panel = document.getElementById('settingsPanel');
+            const panelWidthPx = window.innerWidth * (percentage / 100);
+            panel.style.width = percentage + '%';
+            panel.style.maxWidth = percentage + '%';
+            // 更新关闭时的位置，确保面板完全隐藏
+            panel.style.right = panel.classList.contains('open') ? '0' : `-${panelWidthPx}px`;
+            setCookie('panelWidth', percentage, 365);
+        }
+        
+        // 初始化设置
+        function initSettings() {
+            const panel = document.getElementById('settingsPanel');
+            const panelWidth = getCookie('panelWidth') || '25';
+            const isMobile = window.innerWidth <= 768;
+            const defaultWidth = isMobile ? '50' : '25';
+
+            const width = isMobile ? defaultWidth : panelWidth;
+
+            const numberInput = document.getElementById('panelWidth');
+            const sliderInput = document.getElementById('panelWidthSlider');
+
+            numberInput.value = width;
+            sliderInput.value = width;
+
+            // 首次定位前临时禁用过渡，避免刷新时面板从初始位置横移的可见动画
+            panel.style.transition = 'none';
+            // 先设置面板宽度，这也会设置关闭位置
+            setPanelWidth(width);
+            // 强制重排后恢复过渡，使后续开关面板动画生效
+            void panel.offsetHeight;
+            panel.style.transition = '';
+
+            // 数字输入框变化
+            numberInput.addEventListener('input', function() {
+                let value = parseInt(this.value);
+                if (value < 20) value = 20;
+                if (value > 100) value = 100;
+                this.value = value;
+                sliderInput.value = value;
+                setPanelWidth(value);
+            });
+            
+            // 滑动条变化
+            sliderInput.addEventListener('input', function() {
+                const value = this.value;
+                numberInput.value = value;
+                setPanelWidth(value);
+            });
+            
+            // 壁纸功能
+            initWallpaper();
+        }
+        
+        // 初始化壁纸功能（ADR-0012：URL 由服务端渲染，按文件名寻址可命中缓存）
+        function initWallpaper() {
+            const wallpaperToggle = document.getElementById('wallpaperToggle');
+            const wallpaper = document.getElementById('wallpaper');
+            const wallpaperSrc = {{ (wallpaper_url or '') | tojson }};
+
+            function escapeCSSUrl(url) {
+                return url.replace(/[()"'\\]/g, '\\$&');
+            }
+
+            function applyWallpaper(enabled) {
+                if (enabled && wallpaperSrc && wallpaper) {
+                    if (wallpaperToggle) wallpaperToggle.checked = true;
+                    wallpaper.style.backgroundImage = `url("${escapeCSSUrl(wallpaperSrc)}")`;
+                    wallpaper.classList.add('active');
+                } else if (wallpaper) {
+                    wallpaper.classList.remove('active');
+                }
+            }
+
+            applyWallpaper(!!wallpaperSrc);
+
+            if (wallpaperToggle) {
+                wallpaperToggle.addEventListener('change', function() {
+                    saveWallpaperConfig(this.checked);
+                    applyWallpaper(this.checked);
+                });
+            }
+        }
+        
+        // 保存壁纸配置到服务器
+        function saveWallpaperConfig(enabled) {
+            fetch('/api/wallpaper/config', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-Token': getCsrfToken()
+                },
+                body: JSON.stringify({ enabled })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (!data.success) {
+                    showAlert('保存壁纸配置失败: ' + (data.message || '未知错误'));
+                }
+            })
+            .catch(error => {
+                console.error('Failed to save wallpaper config:', error);
+                showAlert('保存壁纸配置失败');
+            });
+        }
+        
+        // 初始化设置
+        initSettings();
+    </script>
+    
+    <script>
+        // 反馈弹窗功能
+        let selectedImages = [];
+
+        function openFeedbackModal() {
+            document.getElementById('feedbackModal').classList.add('active');
+            checkSubmissionLimit();
+        }
+
+        function closeFeedbackModal() {
+            document.getElementById('feedbackModal').classList.remove('active');
+            document.getElementById('feedbackForm').reset();
+            document.getElementById('imagePreview').innerHTML = '';
+            selectedImages = [];
+        }
+
+        function checkSubmissionLimit() {
+            fetch('/userfix/check-limit')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        const remainingCount = document.getElementById('remainingCount');
+                        if (data.remaining === -1) {
+                            remainingCount.textContent = '无限制';
+                        } else {
+                            remainingCount.textContent = data.remaining;
+                        }
+
+                        const submitBtn = document.querySelector('.feedback-submit-btn');
+                        if (!data.can_submit) {
+                            submitBtn.disabled = true;
+                            submitBtn.textContent = '今日提交次数已用完';
+                        } else {
+                            submitBtn.disabled = false;
+                            submitBtn.textContent = '提交';
+                        }
+                    }
+                })
+                .catch(error => {
+                    console.error('检查提交限制失败:', error);
+                });
+        }
+
+        function previewImages() {
+            const input = document.getElementById('feedbackImages');
+            const preview = document.getElementById('imagePreview');
+            const files = Array.from(input.files).slice(0, 6); // 最多6张
+
+            preview.innerHTML = '';
+            selectedImages = files;
+
+            files.forEach((file, index) => {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const item = document.createElement('div');
+                    item.className = 'image-preview-item';
+                    item.innerHTML = `
+                        <img src="${e.target.result}" alt="预览">
+                        <button type="button" class="remove-btn" onclick="removeImage(${index})">×</button>
+                    `;
+                    preview.appendChild(item);
+                };
+                reader.readAsDataURL(file);
+            });
+        }
+
+        function removeImage(index) {
+            selectedImages.splice(index, 1);
+            const input = document.getElementById('feedbackImages');
+            const preview = document.getElementById('imagePreview');
+
+            // 更新预览
+            preview.innerHTML = '';
+            selectedImages.forEach((file, idx) => {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const item = document.createElement('div');
+                    item.className = 'image-preview-item';
+                    item.innerHTML = `
+                        <img src="${e.target.result}" alt="预览">
+                        <button type="button" class="remove-btn" onclick="removeImage(${idx})">×</button>
+                    `;
+                    preview.appendChild(item);
+                };
+                reader.readAsDataURL(file);
+            });
+        }
+
+        document.getElementById('feedbackForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+
+            const text = document.getElementById('feedbackText').value.trim();
+            if (!text) {
+                showAlert('请输入内容描述');
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('text', text);
+            selectedImages.forEach(image => {
+                formData.append('images', image);
+            });
+
+            const submitBtn = document.querySelector('.feedback-submit-btn');
+            submitBtn.disabled = true;
+            submitBtn.textContent = '提交中...';
+
+            fetch('/userfix/submit', {
+                method: 'POST',
+                headers: {
+                    'X-CSRF-Token': getCsrfToken()
+                },
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    showAlert(data.message);
+                    closeFeedbackModal();
+                    checkSubmissionLimit();
+                } else {
+                    showAlert(data.message);
+                    submitBtn.disabled = false;
+                    submitBtn.textContent = '提交';
+                }
+            })
+            .catch(error => {
+                console.error('提交失败:', error);
+                showAlert('提交失败，请稍后重试');
+                submitBtn.disabled = false;
+                submitBtn.textContent = '提交';
+            });
+        });
+
+        // 点击弹窗外部关闭
+        document.getElementById('feedbackModal').addEventListener('click', function(e) {
+            if (e.target === this) {
+                closeFeedbackModal();
+            }
+        });
+    </script>
+
+    <!-- 自定义对话框模态框 -->
+    <div id="dialogModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 9999; justify-content: center; align-items: center;">
+        <div style="background: white; border-radius: 8px; padding: 24px; max-width: 400px; width: 90%; box-shadow: 0 4px 20px rgba(0,0,0,0.3);">
+            <div id="dialogMessage" style="font-size: 14px; color: #2c3e50; margin-bottom: 20px; line-height: 1.6;"></div>
+            <div style="display: flex; justify-content: flex-end; gap: 8px;">
+                <button id="dialogCancel" class="btn" style="background: #95a5a6;" onclick="closeDialog()">取消</button>
+                <button id="dialogConfirm" class="btn btn-success" onclick="confirmDialog()">确定</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 替换所有原生alert调用
+        function replaceAlertCalls() {
+            // 保存壁纸配置失败提示
+            if (typeof originalSaveWallpaperConfig === 'undefined') {
+                originalSaveWallpaperConfig = saveWallpaperConfig;
+            }
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,18 @@
+{
+  "description": "画廊偏好 GET 读回结构（B2 锚定）：success + 9 个默认偏好键合并后的读回结构。多余键允许（用户已保存的自定义键），9 个默认键缺失或类型不符即失败。",
+  "required": {
+    "success": "bool",
+    "preferences": "dict",
+    "preferences.discover_enabled": "bool",
+    "preferences.discover_format": "str",
+    "preferences.discover_rounded": "bool",
+    "preferences.discover_shape": "str",
+    "preferences.discover_size": "dict",
+    "preferences.discover_size.width": "int",
+    "preferences.discover_size.height": "int",
+    "preferences.sidebar_transparency": "str",
+    "preferences.lightbox_zoom_level": "int",
+    "preferences.image_quality": "str",
+    "preferences.autoplay_lightbox": "bool"
+  }
+}

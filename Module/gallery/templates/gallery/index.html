@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+    <link rel="icon" href="/static/favicon.ico">
+    <title>{{ folder_name }} - 图片画廊</title>
+    <link rel="stylesheet" href="{{ static_url('gallery/css/gallery.css') }}">
+    <script src="/static/common/ui.js"></script>
+    <link rel="stylesheet" href="/static/common/dark-mode.css">
+    {% if subfolders and subfolders[0].cover %}
+    <link rel="preload" as="image" href="{{ subfolders[0].cover }}">
+    {% endif %}
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>{{ folder_name }}</h1>
+            <button class="settings-btn" id="settingsBtn" title="设置">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+                    <path d="M19.14,12.94c0.04-0.3,0.06-0.61,0.06-0.94c0-0.32-0.02-0.64-0.07-0.94l2.03-1.58c0.18-0.14,0.23-0.41,0.12-0.61 l-1.92-3.32c-0.12-0.22-0.37-0.29-0.59-0.22l-2.39,0.96c-0.5-0.38-1.03-0.7-1.62-0.94L14.4,2.81c-0.04-0.24-0.24-0.41-0.48-0.41 h-3.84c-0.24,0-0.43,0.17-0.47,0.41L9.25,5.35C8.66,5.59,8.12,5.92,7.63,6.29L5.24,5.33c-0.22-0.08-0.47,0-0.59,0.22L2.74,8.87 C2.62,9.08,2.66,9.34,2.86,9.48l2.03,1.58C4.84,11.36,4.8,11.69,4.8,12s0.02,0.64,0.07,0.94l-2.03,1.58 c-0.18,0.14-0.23,0.41-0.12,0.61l1.92,3.32c0.12,0.22,0.37,0.29,0.59,0.22l2.39-0.96c0.5,0.38,1.03,0.7,1.62,0.94l0.36,2.54 c0.05,0.24,0.24,0.41,0.48,0.41h3.84c0.24,0,0.44-0.17,0.47-0.41l0.36-2.54c0.59-0.24,1.13-0.56,1.62-0.94l2.39,0.96 c0.22,0.08,0.47,0,0.59-0.22l1.92-3.32c0.12-0.22,0.07-0.47-0.12-0.61L19.14,12.94z M12,15.6c-1.98,0-3.6-1.62-3.6-3.6 s1.62-3.6,3.6-3.6s3.6,1.62,3.6,3.6S13.98,15.6,12,15.6z"/>
+                </svg>
+            </button>
+        </div>
+
+        {% if path_empty %}
+        <div style="text-align: center; padding: 60px 20px; color: #95a5a6; font-size: 14px;">
+            该功能未配置，请联系管理员配置路径
+        </div>
+        {% else %}
+        <div class="controls">
+            <div style="display: flex; gap: 10px;">
+                <input type="text" class="search-box" id="searchBox" placeholder="搜索图片或文件夹...">
+                <button class="search-btn" id="searchBtn" style="flex: 0 0 auto; width: 80px;">搜索</button>
+                {% if relative_path == "" and has_favorites %}
+                <a href="/gallery/favorites" class="search-btn favorites" style="flex: 0 0 auto; text-decoration: none; display: flex; align-items: center; justify-content: center;">我的收藏</a>
+                {% endif %}
+            </div>
+            {% if breadcrumb %}
+            <div class="breadcrumbs">
+                <a href="/gallery">首页</a>
+                {% for item in breadcrumb %}
+                    <span class="separator">></span>
+                    {% if loop.last %}
+                        <span class="current">{{ item.name }}</span>
+                    {% else %}
+                        <a href="/gallery/{{ item.path }}">{{ item.name }}</a>
+                    {% endif %}
+                {% endfor %}
+            </div>
+            {% endif %}
+        </div>
+
+        <div class="gallery" id="gallery">
+            {% if relative_path == "" and has_favorites %}
+            <div class="gallery-item gallery-folder" data-type="favorites">
+                <div class="image-container" style="background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);">
+                    <div class="folder-icon">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="white">
+                            <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
+                        </svg>
+                    </div>
+                    <div class="folder-overlay">
+                        <div class="folder-name">我的收藏</div>
+                        <div class="folder-count">{{ favorites_count }} 张图片</div>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+            {% for folder in subfolders %}
+            <div class="gallery-item gallery-folder" data-type="folder" data-path="{{ folder.path }}">
+                <div class="image-container">
+                    {% if folder.cover %}
+                    <img src="{{ folder.cover }}" alt="{{ folder.name }}" class="gallery-image folder-thumbnail" loading="lazy">
+                    {% else %}
+                    <div class="folder-icon">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="#667eea">
+                            <path d="M10 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z"/>
+                        </svg>
+                    </div>
+                    {% endif %}
+                    <div class="folder-overlay">
+                        <div class="folder-name">{{ folder.name }}</div>
+                        <div class="folder-count">{{ folder.count }} 张图片</div>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+
+            {% for image_url in images %}
+            <div class="gallery-item" data-type="image" data-url="{{ image_url }}">
+                <div class="image-container">
+                    <img src="{{ image_url }}" alt="图片" class="gallery-image" loading="lazy">
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+
+        {% if not subfolders and not images %}
+        <div class="no-images">没有找到内容</div>
+        {% endif %}
+
+        <div class="discover-section">
+            <div class="discover-divider">
+                <span class="discover-title">发现</span>
+            </div>
+            <div class="discover-gallery" id="discoverGallery">
+                <div class="loading">加载中...</div>
+            </div>
+            <div id="discoverBottomSentinel" style="height: 1px;"></div>
+            <div id="discoverReloadHint" class="discover-reload" style="display: none;">
+                <span>已经到底啦</span>
+                <button type="button" onclick="location.reload()">重新加载</button>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+
+    {% set lightbox_favorite_title = '收藏' %}
+    {% include 'gallery/_lightbox.html' %}
+
+    <div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+    <div class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <h2>设置</h2>
+            <button class="sidebar-close" id="sidebarClose">&times;</button>
+        </div>
+        <div class="sidebar-content">
+            <div class="setting-item">
+                <div>
+                    <div class="setting-label">发现功能</div>
+                    <div class="setting-description">显示随机推荐的图片</div>
+                </div>
+                <label class="toggle-switch" style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                    <input type="checkbox" id="discoverToggle" style="display: none;">
+                    <span class="toggle-slider"></span>
+                </label>
+            </div>
+            <div class="setting-item" id="discoverFormatSetting">
+                <div>
+                    <div class="setting-label">发现格式</div>
+                    <div class="setting-description">选择图片显示列数（仅移动端）</div>
+                </div>
+                <select id="discoverFormatSelect" style="padding: 10px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px; background: white; cursor: pointer;">
+                    <option value="one">一栏</option>
+                    <option value="two">两栏</option>
+                    <option value="three">三栏</option>
+                </select>
+            </div>
+            <div class="setting-item" id="discoverRoundedSetting">
+                <div>
+                    <div class="setting-label">发现图片圆角</div>
+                    <div class="setting-description">图片圆角和间隔（仅移动端）</div>
+                </div>
+                <label class="toggle-switch" style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                    <input type="checkbox" id="discoverRoundedToggle" style="display: none;">
+                    <span class="toggle-slider"></span>
+                </label>
+            </div>
+            <div class="setting-item" id="discoverSizeSetting">
+                <div>
+                    <div class="setting-label">发现图片大小</div>
+                    <div class="setting-description">设置图片尺寸（仅电脑端）</div>
+                </div>
+                <div style="display: flex; flex-direction: column; gap: 8px; min-width: 150px;">
+                    <select id="discoverShapeSelect" style="padding: 8px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px; background: white; cursor: pointer;">
+                        <option value="square">正方形</option>
+                        <option value="rectangle">长方形</option>
+                    </select>
+                    <div id="discoverSizeSquare">
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <input type="range" id="discoverSizeRange" min="100" max="400" value="150" style="flex: 1;">
+                            <input type="number" id="discoverSizeInput" min="100" max="400" value="150" style="width: 60px; padding: 8px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px; text-align: center;">
+                            <span style="font-size: 12px; color: #95a5a6;">px</span>
+                        </div>
+                    </div>
+                    <div id="discoverSizeRectangle" style="display: none;">
+                        <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
+                            <span style="font-size: 12px; color: #95a5a6; width: 30px;">宽:</span>
+                            <input type="range" id="discoverWidthRange" min="100" max="500" value="200" style="flex: 1;">
+                            <input type="number" id="discoverWidthInput" min="100" max="500" value="200" style="width: 60px; padding: 8px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px; text-align: center;">
+                            <span style="font-size: 12px; color: #95a5a6;">px</span>
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <span style="font-size: 12px; color: #95a5a6; width: 30px;">高:</span>
+                            <input type="range" id="discoverHeightRange" min="100" max="500" value="150" style="flex: 1;">
+                            <input type="number" id="discoverHeightInput" min="100" max="500" value="150" style="width: 60px; padding: 8px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px; text-align: center;">
+                            <span style="font-size: 12px; color: #95a5a6;">px</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="setting-item">
+                <div>
+                    <div class="setting-label">设置界面透明度</div>
+                    <div class="setting-description">调整设置界面背景透明度</div>
+                </div>
+                <select id="sidebarTransparentSelect" style="padding: 10px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px; background: white; cursor: pointer;">
+                    <option value="100">不透明</option>
+                    <option value="90">10%透明</option>
+                    <option value="80">20%透明</option>
+                    <option value="70">30%透明</option>
+                    <option value="60">40%透明</option>
+                    <option value="50">50%透明</option>
+                </select>
+            </div>
+            <div class="setting-item" id="paddingSetting">
+                <div>
+                    <div class="setting-label">左右留空</div>
+                    <div class="setting-description">调整页面左右两侧留白（仅电脑端）</div>
+                </div>
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <input type="range" id="paddingRange" min="0" max="200" value="60" style="flex: 1;">
+                    <input type="number" id="paddingInput" min="0" max="200" value="60" style="width: 60px; padding: 8px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px; text-align: center;">
+                    <span style="font-size: 12px; color: #95a5a6;">px</span>
+                </div>
+            </div>
+            <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #eee;">
+                <button id="resetSettingsBtn" style="width: 100%; padding: 12px; background: #e74c3c; color: white; border: none; border-radius: 4px; font-size: 14px; cursor: pointer; transition: background 0.3s;">
+                    恢复默认设置
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const serverPreferences = {{ user_preferences | tojson if user_preferences else '{}' }};
+        const serverDeviceSpecific = {{ device_specific | tojson if device_specific else '{}' }};
+        window.csrfToken = {{ csrf_token | tojson if csrf_token else "''" }};
+    </script>
+    <script src="{{ static_url('gallery/js/gallery-page.js') }}"></script>
+</body>
+</html>

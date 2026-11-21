@@ -1,0 +1,21 @@
+{
+  "description": "活动日志 API grouped=false 平铺结构（B1 锚定，向后兼容：原字段全保留，仅追加 grouped/total_pages）。多余键允许，必需键缺失或类型不符即失败。",
+  "required": {
+    "success": "bool",
+    "grouped": "bool",
+    "total": "int",
+    "page": "int",
+    "per_page": "int",
+    "total_pages": "int",
+    "activities": "list",
+    "activities[].username": "str",
+    "activities[].description": "str",
+    "activities[].time": "str",
+    "activities[].ip": "str",
+    "activities[].path": "str",
+    "activities[].device_type": "str",
+    "activities[].os": "str",
+    "activities[].browser": "str",
+    "activities[].is_logged_in": "bool"
+  }
+}

@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" href="/static/favicon.ico">
+    <title>用户登录</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Microsoft YaHei', sans-serif; }
+        body { background: #f5f7fa; color: #2c3e50; line-height: 1.6; padding: 20px; min-height: 100vh; display: flex; align-items: center; justify-content: center; }
+        .container { background: white; padding: 40px; border-radius: 10px; box-shadow: 0 5px 20px rgba(0,0,0,0.1); max-width: 400px; width: 100%; }
+        .header { text-align: center; margin-bottom: 30px; }
+        .header h1 { color: #2c3e50; font-size: 24px; margin-bottom: 10px; }
+        .header p { color: #7f8c8d; font-size: 14px; }
+        .form-group { margin-bottom: 20px; }
+        .form-group label { display: block; margin-bottom: 8px; color: #2c3e50; font-weight: 500; }
+        .form-group input { width: 100%; padding: 12px; border: 2px solid #ddd; border-radius: 6px; font-size: 16px; outline: none; }
+        .form-group input:focus { border-color: #3498db; }
+        .btn { width: 100%; padding: 12px; background: #3498db; color: white; border: none; border-radius: 6px; font-size: 16px; font-weight: 500; cursor: pointer; }
+        .btn:hover { background: #2980b9; }
+        .error { color: #e74c3c; text-align: center; margin-top: 15px; font-size: 14px; }
+        
+        /* 暗夜模式 */
+        body.dark-mode { background: #1a1a1a; color: #e0e0e0; }
+        body.dark-mode .container { background: #2d2d2d; box-shadow: 0 5px 20px rgba(0,0,0,0.5); }
+        body.dark-mode .header h1 { color: #e0e0e0; }
+        body.dark-mode .header p { color: #a0a0a0; }
+        body.dark-mode .form-group label { color: #e0e0e0; }
+        body.dark-mode .form-group input { background: #3d3d3d; border-color: #4d4d4d; color: #e0e0e0; }
+        body.dark-mode .form-group input:focus { border-color: #3498db; }
+        body.dark-mode .form-group input::placeholder { color: #6d6d6d; }
+
+        @media (max-width: 480px) {
+            .container { padding: 30px 20px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>用户登录</h1>
+            <p>请输入用户名和密码</p>
+        </div>
+
+        <form method="post" action="/user/login">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+            <div class="form-group">
+                <label for="username">用户名</label>
+                <input type="text" id="username" name="username" required placeholder="请输入用户名">
+            </div>
+            <div class="form-group">
+                <label for="password">密码</label>
+                <input type="password" id="password" name="password" required placeholder="请输入密码">
+            </div>
+            <button type="submit" class="btn">登录</button>
+        </form>
+
+        {% if error %}
+        <div class="error">{{ error }}</div>
+        {% endif %}
+    </div>
+    
+    <script>
+        // 检查 Cookie 中的暗夜模式设置
+        function checkDarkMode() {
+            const darkMode = getCookie('darkMode') === 'true';
+            applyDarkMode(darkMode);
+        }
+        
+        // 应用暗夜模式
+        function applyDarkMode(darkMode) {
+            if (darkMode) {
+                document.body.classList.add('dark-mode');
+            } else {
+                document.body.classList.remove('dark-mode');
+            }
+        }
+        
+        // 获取 Cookie
+        function getCookie(name) {
+            const value = `; ${document.cookie}`;
+            const parts = value.split(`; ${name}=`);
+            if (parts.length === 2) return parts.pop().split(';').shift();
+            return '';
+        }
+        
+        // 页面加载时检查暗夜模式
+        checkDarkMode();
+    </script>
+</body>
+</html>

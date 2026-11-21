@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" href="/static/favicon.ico">
+    <title>控制台 - {{ server_info.server_name }}</title>
+    <script src="/static/common/ui.js"></script>
+    <link rel="stylesheet" href="/static/common/dark-mode.css">
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Microsoft YaHei', sans-serif; }
+        body { background: #f5f7fa; color: #2c3e50; line-height: 1.5; display: flex; min-height: 100vh; }
+
+        /* 左侧导航 */
+        .sidebar { width: 220px; background: white; display: flex; flex-direction: column; flex-shrink: 0; border-right: 1px solid #e0e0e0; }
+        .sidebar-header { padding: 20px; border-bottom: 1px solid #e0e0e0; }
+        .sidebar-title { font-size: 18px; font-weight: 500; color: #2c3e50; }
+        .sidebar-nav { flex: 1; padding: 10px 0; }
+        .nav-item { padding: 12px 20px; cursor: pointer; color: #7f8c8d; font-size: 14px; display: flex; align-items: center; transition: background 0.2s; text-decoration: none; }
+        .nav-item:hover { background: #f5f7fa; color: #2c3e50; }
+        .nav-item.active { background: #3498db; color: white; }
+        .nav-icon { margin-right: 10px; font-size: 16px; }
+
+        /* 主内容区 */
+        .main-content { flex: 1; padding: 20px; overflow-y: auto; }
+        .page-header { margin-bottom: 20px; }
+        .page-title { font-size: 20px; font-weight: 500; color: #2c3e50; }
+
+        /* 卡片 */
+        .card { background: white; border-radius: 6px; padding: 16px; margin-bottom: 16px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        .card-title { font-size: 16px; font-weight: 500; color: #2c3e50; margin-bottom: 12px; }
+
+        /* 服务器信息 */
+        .info-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; }
+        .info-item { display: flex; flex-direction: column; }
+        .info-label { font-size: 12px; color: #7f8c8d; margin-bottom: 4px; }
+        .info-value { font-size: 14px; color: #2c3e50; font-weight: 500; }
+        .info-value.highlight { color: #3498db; }
+
+        /* 活动日志列表 */
+        .activity-list { max-height: 400px; overflow-y: auto; }
+        .activity-item { padding: 10px 0; border-bottom: 1px solid #eee; display: flex; align-items: flex-start; }
+        .activity-item:last-child { border-bottom: none; }
+        .activity-icon { color: #3498db; margin-right: 10px; font-size: 14px; }
+        .activity-content { flex: 1; }
+        .activity-text { font-size: 14px; color: #2c3e50; margin-bottom: 4px; }
+        .activity-meta { font-size: 12px; color: #7f8c8d; }
+
+        /* 两列布局与封禁 IP 卡片 */
+        .dash-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px; }
+        .dash-row .card { margin-bottom: 0; }
+        .ban-item { padding: 8px 0; border-bottom: 1px solid #eee; display: flex; align-items: center; justify-content: space-between; }
+        .ban-item:last-child { border-bottom: none; }
+        .ban-ip { font-size: 14px; color: #2c3e50; font-weight: 500; }
+        .ban-meta { font-size: 12px; color: #7f8c8d; }
+        .ban-action .btn-mini { padding: 4px 10px; background: #e74c3c; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px; }
+        body.dark-mode .ban-item { border-bottom: 1px solid #4d4d4d; }
+        body.dark-mode .ban-ip { color: #e0e0e0; }
+        body.dark-mode .ban-meta { color: #a0a0a0; }
+        @media (max-width: 768px) { .dash-row { grid-template-columns: 1fr; } }
+
+        /* 按钮 */
+        .btn { padding: 8px 16px; background: #3498db; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 14px; margin-right: 8px; transition: background 0.2s; text-decoration: none; display: inline-block; }
+        .btn:hover { background: #2980b9; }
+        .btn-danger { background: #e74c3c; }
+        .btn-danger:hover { background: #c0392b; }
+        
+        /* 暗夜模式 */
+        body.dark-mode { background: #1a1a1a; color: #e0e0e0; }
+        body.dark-mode .sidebar { background: #2d2d2d; border-right: 1px solid #4d4d4d; }
+        body.dark-mode .sidebar-header { border-bottom: 1px solid #4d4d4d; }
+        body.dark-mode .sidebar-title { color: #e0e0e0; }
+        body.dark-mode .nav-item { color: #a0a0a0; }
+        body.dark-mode .nav-item:hover { background: #3d3d3d; color: #e0e0e0; }
+        body.dark-mode .nav-item.active { background: #3498db; color: white; }
+        body.dark-mode .page-title { color: #e0e0e0; }
+        body.dark-mode .card { background: #2d2d2d; box-shadow: 0 2px 4px rgba(0,0,0,0.3); }
+        body.dark-mode .card-title { color: #e0e0e0; }
+        body.dark-mode .info-label { color: #a0a0a0; }
+        body.dark-mode .info-value { color: #e0e0e0; }
+        body.dark-mode .activity-item { border-bottom: 1px solid #4d4d4d; }
+        body.dark-mode .activity-text { color: #e0e0e0; }
+        body.dark-mode .activity-meta { color: #a0a0a0; }
+        body.dark-mode div[style*="#f8f9fa"] { background: #3d3d3d !important; }
+        body.dark-mode div[style*="#f8f9fa"] div { color: #e0e0e0 !important; }
+        body.dark-mode div[style*="#f8f9fa"] div[style*="#7f8c8d"] { color: #a0a0a0 !important; }
+        
+        /* 响应式 */
+        @media (max-width: 768px) {
+            body { flex-direction: column; }
+            .sidebar { width: 100%; }
+            .sidebar-nav { display: flex; overflow-x: auto; }
+            .nav-item { flex-shrink: 0; }
+        }
+    </style>
+</head>
+<body>
+    <div class="sidebar">
+        <div class="sidebar-header">
+            <div class="sidebar-title">控制台</div>
+        </div>
+        <div class="sidebar-nav">
+            <a href="/admin" class="nav-item active">
+                仪表盘
+            </a>
+            <a href="/admin/config" class="nav-item">
+                配置管理
+            </a>
+            <a href="/admin/setting" class="nav-item">
+                系统设置
+            </a>
+            <a href="/admin/activity" class="nav-item">
+                活动日志
+            </a>
+            <a href="/admin/users" class="nav-item">
+                活动账户
+            </a>
+            <a href="/admin/userfix" class="nav-item">
+                用户反馈
+            </a>
+        </div>
+    </div>
+    
+    <div class="main-content">
+        <div class="page-header">
+            <div class="page-title">服务器 > 仪表盘</div>
+        </div>
+        
+        <div class="card">
+            <div class="card-title">服务器信息</div>
+            <div class="info-grid">
+                <div class="info-item">
+                    <span class="info-label">服务器名称</span>
+                    <span class="info-value">{{ server_info.server_name }}</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">版本</span>
+                    <span class="info-value">{{ server_info.version }}</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">运行时间</span>
+                    <span class="info-value highlight">{{ uptime }}</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">当前在线用户</span>
+                    <span class="info-value highlight">{{ active_users_count }}</span>
+                </div>
+            </div>
+        </div>
+        
+        <div class="dash-row">
+            <div class="card">
+                <div class="card-title">最近活动</div>
+                <div class="activity-list">
+                    {% if recent_activities %}
+                        {% for activity in recent_activities %}
+                        <div class="activity-item">
+                            <div class="activity-content">
+                                <div class="activity-text">{{ activity.description }}</div>
+                                <div class="activity-meta">{{ activity.time }} | {{ activity.ip }}</div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    {% else %}
+                        <div style="color: #7f8c8d; font-size: 14px;">暂无活动记录</div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-title">封禁 IP</div>
+                <div class="activity-list">
+                    {% if recent_bans %}
+                        {% for b in recent_bans %}
+                        <div class="ban-item">
+                            <div>
+                                <div class="ban-ip">{{ b.ip }}</div>
+                                <div class="ban-meta">
+                                    {{ b.ban_reason_label }} |
+                                    {% if b.is_permanent %}永久封禁{% elif b.remaining_seconds is not none %}{{ b.remaining_seconds }} 秒后解除{% else %}-{% endif %}
+                                </div>
+                            </div>
+                            <div class="ban-action">
+                                <button class="btn-mini" data-ip="{{ b.ip }}" onclick="unbanIp(this.dataset.ip)">解除</button>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    {% else %}
+                        <div style="color: #7f8c8d; font-size: 14px;">暂无封禁记录</div>
+                    {% endif %}
+                </div>
+                <div style="margin-top: 10px; text-align: right;">
+                    <a href="/admin/ip" style="color: #3498db; font-size: 13px; text-decoration: none;">查看全部</a>
+                </div>
+            </div>
+        </div>
+        
+        <div class="card">
+            <div class="card-title">活动设备</div>
+            {% if active_users %}
+                {% for user in active_users %}
+                <div style="padding: 12px; background: #f8f9fa; border-radius: 4px; margin-bottom: 8px;">
+                    <div style="font-size: 14px; color: #2c3e50; font-weight: 500;">{{ user.username }}</div>
+                    <div style="font-size: 12px; color: #7f8c8d; margin-top: 2px;">{{ user.user_agent }} | {{ user.ip }}</div>
+                    <div style="font-size: 12px; color: #7f8c8d;">最后活动: {{ user.last_activity }}</div>
+                </div>
+                {% endfor %}
+            {% else %}
+                <div style="color: #7f8c8d; font-size: 14px;">暂无活动设备</div>
+            {% endif %}
+        </div>
+        
+        <div style="margin-top: 20px;">
+            <a href="/" class="btn">返回主页</a>
+            <a href="/user" class="btn">用户信息</a>
+            <button type="button" class="btn btn-danger" onclick="restartServer()">重启服务器</button>
+        </div>
+    </div>
+    
+    <!-- 自定义对话框模态框 -->
+    <div id="dialogModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 9999; justify-content: center; align-items: center;">
+        <div style="background: white; border-radius: 8px; padding: 24px; max-width: 400px; width: 90%; box-shadow: 0 4px 20px rgba(0,0,0,0.3);">
+            <div id="dialogMessage" style="font-size: 14px; color: #2c3e50; margin-bottom: 20px; line-height: 1.6;"></div>
+            <div style="display: flex; justify-content: flex-end; gap: 8px;">
+                <button id="dialogCancel" class="btn" style="background: #95a5a6;" onclick="closeDialog()">取消</button>
+                <button id="dialogConfirm" class="btn btn-success" onclick="confirmDialog()">确定</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function restartServer() {
+            showConfirm('确定要重启服务器吗？', function(confirmed) {
+                if (!confirmed) return;
+                showAlert('服务器重启中，页面将自动刷新...');
+                // os.execl 替换进程后当前请求不会返回响应，fetch 会报网络错误，
+                // 因此不依赖 fetch 回执，直接发起请求并定时刷新页面
+                fetch('/admin/restart', { method: 'POST', keepalive: true, headers: { 'X-CSRF-Token': getCsrfToken() } }).catch(function() {});
+                setTimeout(function() {
+                    location.reload();
+                }, 2000);
+            });
+        }
+
+        // 解除 IP 封禁
+        function unbanIp(ip) {
+            showConfirm('确定解除 ' + ip + ' 的封禁吗？', function(confirmed) {
+                if (!confirmed) return;
+                fetch('/admin/ip/unban', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': getCsrfToken() },
+                    body: JSON.stringify({ ip: ip })
+                }).then(function (r) { return r.json(); })
+                  .then(function (data) {
+                      if (data.success) { location.reload(); }
+                      else { showAlert(data.message || '解除失败'); }
+                  });
+            });
+        }
+    </script>
+</body>
+</html>

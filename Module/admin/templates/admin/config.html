@@ -1,0 +1,448 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" href="/static/favicon.ico">
+    <title>配置管理 - {{ server_info.server_name }}</title>
+    <script>window.csrfToken = {{ csrf_token | tojson }};</script>
+    <script src="/static/common/ui.js"></script>
+    <link rel="stylesheet" href="/static/common/dark-mode.css">
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Microsoft YaHei', sans-serif; }
+        body { background: #f5f7fa; color: #2c3e50; line-height: 1.5; display: flex; min-height: 100vh; }
+
+        /* 左侧导航 */
+        .sidebar { width: 220px; background: white; display: flex; flex-direction: column; flex-shrink: 0; border-right: 1px solid #e0e0e0; }
+        .sidebar-header { padding: 20px; border-bottom: 1px solid #e0e0e0; }
+        .sidebar-title { font-size: 18px; font-weight: 500; color: #2c3e50; }
+        .sidebar-nav { flex: 1; padding: 10px 0; }
+        .nav-item { padding: 12px 20px; cursor: pointer; color: #7f8c8d; font-size: 14px; display: flex; align-items: center; transition: background 0.2s; text-decoration: none; }
+        .nav-item:hover { background: #f5f7fa; color: #2c3e50; }
+        .nav-item.active { background: #3498db; color: white; }
+
+        /* 主内容区 */
+        .main-content { flex: 1; padding: 20px; overflow-y: auto; }
+        .page-header { margin-bottom: 20px; }
+        .page-title { font-size: 20px; font-weight: 500; color: #2c3e50; }
+
+        /* 卡片 */
+        .card { background: white; border-radius: 6px; padding: 20px; margin-bottom: 16px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        .card-title { font-size: 16px; font-weight: 500; color: #2c3e50; margin-bottom: 16px; padding-bottom: 12px; border-bottom: 1px solid #e0e0e0; }
+
+        /* 表单 */
+        .form-group { margin-bottom: 16px; }
+        .form-label { display: block; font-size: 14px; color: #2c3e50; margin-bottom: 6px; font-weight: 500; }
+        .form-input { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px; transition: border-color 0.2s; }
+        .form-input:focus { outline: none; border-color: #3498db; }
+        .form-input:disabled { background: #f5f5f5; cursor: not-allowed; }
+        .form-help { font-size: 12px; color: #7f8c8d; margin-top: 4px; }
+
+        /* 按钮 */
+        .btn { padding: 10px 20px; background: #3498db; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 14px; transition: background 0.2s; text-decoration: none; display: inline-block; }
+        .btn:hover { background: #2980b9; }
+        .btn:disabled { background: #bdc3c7; cursor: not-allowed; }
+        .btn-success { background: #27ae60; }
+        .btn-success:hover { background: #229954; }
+        .btn-danger { background: #e74c3c; }
+        .btn-danger:hover { background: #c0392b; }
+
+        /* 消息提示 */
+        .message { padding: 12px; border-radius: 4px; margin-bottom: 16px; font-size: 14px; }
+        .message.success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .message.error { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+        .message.info { background: #d1ecf1; color: #0c5460; border: 1px solid #bee5eb; }
+
+        /* 暗夜模式 */
+        body.dark-mode { background: #1a1a1a; color: #e0e0e0; }
+        body.dark-mode .sidebar { background: #2d2d2d; border-right: 1px solid #4d4d4d; }
+        body.dark-mode .sidebar-header { border-bottom: 1px solid #4d4d4d; }
+        body.dark-mode .sidebar-title { color: #e0e0e0; }
+        body.dark-mode .nav-item { color: #a0a0a0; }
+        body.dark-mode .nav-item:hover { background: #3d3d3d; color: #e0e0e0; }
+        body.dark-mode .nav-item.active { background: #3498db; color: white; }
+        body.dark-mode .page-title { color: #e0e0e0; }
+        body.dark-mode .card { background: #2d2d2d; box-shadow: 0 2px 4px rgba(0,0,0,0.3); }
+        body.dark-mode .card-title { color: #e0e0e0; border-bottom: 1px solid #4d4d4d; }
+        body.dark-mode .form-label { color: #e0e0e0; }
+        body.dark-mode .form-input { background: #3d3d3d; border-color: #4d4d4d; color: #e0e0e0; }
+        /* 路径输入框由 JS 写入内联背景/文字色，暗夜下用 !important 覆盖 */
+        body.dark-mode .form-input[style] { background-color: #3d3d3d !important; color: #e0e0e0 !important; }
+        body.dark-mode .form-input:focus { border-color: #3498db; }
+        body.dark-mode .form-help { color: #a0a0a0; }
+
+        /* 响应式 */
+        @media (max-width: 768px) {
+            body { flex-direction: column; }
+            .sidebar { width: 100%; }
+            .sidebar-nav { display: flex; overflow-x: auto; }
+            .nav-item { flex-shrink: 0; }
+        }
+    </style>
+</head>
+<body>
+    <div class="sidebar">
+        <div class="sidebar-header">
+            <div class="sidebar-title">控制台</div>
+        </div>
+        <div class="sidebar-nav">
+            <a href="/admin" class="nav-item">
+                仪表盘
+            </a>
+            <a href="/admin/config" class="nav-item active">
+                配置管理
+            </a>
+            <a href="/admin/setting" class="nav-item">
+                系统设置
+            </a>
+            <a href="/admin/activity" class="nav-item">
+                活动日志
+            </a>
+            <a href="/admin/users" class="nav-item">
+                活动账户
+            </a>
+            <a href="/admin/userfix" class="nav-item">
+                用户反馈
+            </a>
+        </div>
+    </div>
+    
+    <div class="main-content">
+        <div class="page-header">
+            <div class="page-title">系统管理 > 配置管理</div>
+        </div>
+        
+        <div id="messageContainer"></div>
+        
+        <div class="card">
+            <div class="card-title">路径配置</div>
+            <div class="form-group">
+                <label class="form-label">书籍数据路径</label>
+                <input type="text" id="book_data_path" class="form-input" placeholder="例如: D:/noveld/">
+                <div class="form-help">存储书籍数据文件的目录路径</div>
+            </div>
+            <div class="form-group">
+                <label class="form-label">书籍静态资源路径</label>
+                <input type="text" id="book_static_path" class="form-input" placeholder="例如: D:/noveld/static/">
+                <div class="form-help">存储书籍静态资源（图片、CSS等）的目录路径</div>
+            </div>
+            <div class="form-group">
+                <label class="form-label">画廊路径</label>
+                <input type="text" id="gallery_root_path" class="form-input" placeholder="例如: D:/sdimages">
+                <div class="form-help">存储画廊图片的目录路径</div>
+            </div>
+            <button type="button" class="btn btn-success save-config-btn">保存配置</button>
+        </div>
+        
+        <div class="card" id="mountSection">
+            <div class="card-title">挂载静态页面</div>
+            <div class="form-group">
+                <label class="form-label">挂载名称</label>
+                <input type="text" id="mount_name" class="form-input" placeholder="例如: rrrr">
+                <div class="form-help">挂载后可通过 /名称 访问，只能包含字母、数字、下划线和短横线</div>
+            </div>
+            <div class="form-group">
+                <label class="form-label">文件路径</label>
+                <input type="text" id="mount_path" class="form-input" placeholder="例如: D:/test/page.html 或 D:/test/pages/">
+                <div class="form-help">可以是HTML文件路径或目录路径（目录会查找index.html）</div>
+            </div>
+            <button type="button" class="btn btn-success add-mount-btn">添加挂载</button>
+        </div>
+        
+        <div class="card">
+            <div class="card-title">已挂载的页面</div>
+            <div id="mountedPagesList"></div>
+        </div>
+        
+        <div style="margin-top: 20px;">
+            <a href="/" class="btn">返回主页</a>
+        </div>
+    </div>
+
+    <!-- 自定义对话框模态框 -->
+    <div id="dialogModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 9999; justify-content: center; align-items: center;">
+        <div style="background: white; border-radius: 8px; padding: 24px; max-width: 400px; width: 90%; box-shadow: 0 4px 20px rgba(0,0,0,0.3);">
+            <div id="dialogMessage" style="font-size: 14px; color: #2c3e50; margin-bottom: 20px; line-height: 1.6;"></div>
+            <div style="display: flex; justify-content: flex-end; gap: 8px;">
+                <button id="dialogCancel" class="btn" style="background: #95a5a6;" onclick="closeDialog()">取消</button>
+                <button id="dialogConfirm" class="btn btn-success" onclick="confirmDialog()">确定</button>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        // 显示消息
+        function showMessage(text, type) {
+            var container = document.getElementById('messageContainer');
+            var message = document.createElement('div');
+            message.className = 'message ' + type;
+            message.textContent = text;
+            container.appendChild(message);
+
+            setTimeout(function() {
+                message.remove();
+            }, 5000);
+        }
+
+        // 切换路径输入框状态
+        function togglePathInput(fieldId, enabled) {
+            var input = document.getElementById(fieldId);
+            if (!input) return;
+
+            if (enabled) {
+                input.disabled = false;
+                input.style.backgroundColor = '#ffffff';
+                input.style.color = '#2c3e50';
+                input.placeholder = '';
+            } else {
+                input.disabled = true;
+                input.style.backgroundColor = '#f0f0f0';
+                input.style.color = '#95a5a6';
+                input.value = '';
+                input.placeholder = '';
+            }
+        }
+
+        // 禁用输入框点击提示
+        function handleDisabledClick(fieldId) {
+            // 不做任何事，只是阻止默认行为
+        }
+
+        // 加载配置
+        function loadConfig() {
+            fetch('/admin/config/api')
+                .then(function(response) { return response.json(); })
+                .then(function(data) {
+                    if (data.success) {
+                        var config = data.config;
+                        if (config.paths) {
+                            document.getElementById('book_data_path').value = config.paths.book_data_path || '';
+                            document.getElementById('book_static_path').value = config.paths.book_static_path || '';
+                            document.getElementById('gallery_root_path').value = config.paths.gallery_root_path || '';
+                        }
+
+                        // 根据设置开关禁用/启用路径输入框
+                        var settings = config.settings || {};
+                        togglePathInput('book_data_path', settings.books_enabled !== false);
+                        togglePathInput('book_static_path', settings.books_enabled !== false);
+                        togglePathInput('gallery_root_path', settings.gallery_enabled !== false);
+
+                        // 挂载区域
+                        var mountSection = document.getElementById('mountSection');
+                        if (mountSection) {
+                            mountSection.style.opacity = settings.mounted_pages_enabled !== false ? '1' : '0.5';
+                            mountSection.style.pointerEvents = settings.mounted_pages_enabled !== false ? 'auto' : 'none';
+                        }
+                    } else {
+                        showMessage('加载配置失败: ' + (data.message || '未知错误'), 'error');
+                    }
+                })
+                .catch(function(error) {
+                    showMessage('请求失败: ' + error, 'error');
+                });
+        }
+
+        // 保存配置
+        function saveConfig() {
+            // ADR-0006：恢复路径空值校验后，被开关禁用的输入框不提交该键
+            // （而非提交空串），避免禁用功能后整次保存被拒绝
+            var paths = {};
+            var pathFields = ['book_data_path', 'book_static_path', 'gallery_root_path'];
+            pathFields.forEach(function(fieldId) {
+                var input = document.getElementById(fieldId);
+                if (input && !input.disabled) {
+                    paths[fieldId] = input.value;
+                }
+            });
+            var config = { paths: paths };
+
+            var btn = document.querySelector('.save-config-btn');
+            btn.disabled = true;
+            btn.textContent = '保存中...';
+
+            fetch('/admin/config/update', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': getCsrfToken() },
+                body: JSON.stringify(config)
+            })
+            .then(function(response) { return response.json(); })
+            .then(function(data) {
+                if (data.success) {
+                    showMessage('配置保存成功！', 'success');
+                } else {
+                    showMessage('保存失败: ' + (data.message || '未知错误'), 'error');
+                }
+            })
+            .catch(function(error) {
+                showMessage('请求失败: ' + error, 'error');
+            })
+            .finally(function() {
+                btn.disabled = false;
+                btn.textContent = '保存配置';
+            });
+        }
+
+        // 加载已挂载的页面列表
+        function loadMountedPages() {
+            fetch('/admin/mounted-pages')
+                .then(function(response) { return response.json(); })
+                .then(function(data) {
+                    if (data.success) {
+                        renderMountedPages(data.pages);
+                    } else {
+                        showMessage('加载挂载页面失败: ' + (data.message || '未知错误'), 'error');
+                    }
+                })
+                .catch(function(error) {
+                    showMessage('请求失败: ' + error, 'error');
+                });
+        }
+
+        // 渲染已挂载的页面列表
+        function renderMountedPages(pages) {
+            var container = document.getElementById('mountedPagesList');
+
+            if (!pages || pages.length === 0) {
+                container.innerHTML = '<div style="color: #7f8c8d; font-size: 14px;">暂无挂载页面</div>';
+                return;
+            }
+
+            var html = '';
+            pages.forEach(function(page) {
+                html += '<div style="padding: 12px; background: #f8f9fa; border-radius: 4px; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center;">';
+                html += '<div>';
+                html += '<div style="font-size: 14px; color: #2c3e50; font-weight: 500;">/' + page.name + '</div>';
+                html += '<div style="font-size: 12px; color: #7f8c8d; margin-top: 2px;">' + page.path + '</div>';
+                html += '<div style="font-size: 11px; color: #95a5a6; margin-top: 2px;">' + (page.type === 'file' ? '文件' : '目录') + ' | 创建于: ' + (page.created_at ? new Date(page.created_at).toLocaleString() : '—') + '</div>';
+                html += '</div>';
+                html += '<button type="button" class="btn btn-danger delete-page-btn" style="padding: 6px 12px; font-size: 12px;" data-page-name="' + page.name + '">删除</button>';
+                html += '</div>';
+            });
+
+            container.innerHTML = html;
+
+            container.querySelectorAll('.delete-page-btn').forEach(function(btn) {
+                btn.addEventListener('click', function() {
+                    deleteMountPage(this.dataset.pageName);
+                });
+            });
+        }
+
+        // 页面加载时获取配置
+        loadConfig();
+        loadMountedPages();
+
+        // 绑定按钮事件
+        document.querySelectorAll('.save-config-btn').forEach(function(btn) {
+            btn.addEventListener('click', saveConfig);
+        });
+        document.querySelector('.add-mount-btn').addEventListener('click', function() {
+            addMountPage(this);
+        });
+
+        // 为路径输入框添加点击事件
+        document.getElementById('book_data_path').addEventListener('click', function() { handleDisabledClick('book_data_path'); });
+        document.getElementById('book_static_path').addEventListener('click', function() { handleDisabledClick('book_static_path'); });
+        document.getElementById('gallery_root_path').addEventListener('click', function() { handleDisabledClick('gallery_root_path'); });
+    </script>
+
+    <script>
+        // 添加挂载页面
+        function addMountPage(btn) {
+            const name = document.getElementById('mount_name').value.trim();
+            const path = document.getElementById('mount_path').value.trim();
+
+            if (!name || !path) {
+                showMessage('请填写名称和路径', 'error');
+                return;
+            }
+
+            // 验证名称格式（只允许字母、数字、下划线、短横线）
+            if (!/^[a-zA-Z0-9_-]+$/.test(name)) {
+                showMessage('名称只能包含字母、数字、下划线和短横线', 'error');
+                return;
+            }
+
+            // 如果没有传入按钮参数，通过事件获取
+            if (!btn) {
+                btn = event.target;
+            }
+
+            if (!btn) {
+                console.error('无法获取按钮元素');
+                showMessage('系统错误：无法获取按钮', 'error');
+                return;
+            }
+
+            const originalText = btn.textContent;
+
+            btn.disabled = true;
+            btn.textContent = '添加中...';
+
+            fetch('/admin/mounted-pages', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-Token': getCsrfToken()
+                },
+                body: JSON.stringify({ name, path })
+            })
+            .then(response => {
+                return response.json();
+            })
+            .then(data => {
+                if (data.success) {
+                    const pageType = data.page_type === 'file' ? '文件' : (data.page_type === 'directory' ? '目录' : '页面');
+                    showMessage(`${pageType}挂载成功！正在跳转到 /${data.name || name}...`, 'success');
+                    document.getElementById('mount_name').value = '';
+                    document.getElementById('mount_path').value = '';
+                    loadMountedPages();
+
+                    // 延迟跳转，让用户看到成功提示
+                    setTimeout(() => {
+                        if (data.redirect_url) {
+                            window.location.href = data.redirect_url;
+                        }
+                    }, 1500);
+                } else {
+                    showMessage('挂载失败: ' + (data.message || '未知错误'), 'error');
+                }
+            })
+            .catch(error => {
+                console.error('请求失败:', error);
+                showMessage('请求失败: ' + error, 'error');
+            })
+            .finally(() => {
+                btn.disabled = false;
+                btn.textContent = originalText;
+            });
+        }
+        
+        // 删除挂载页面
+        function deleteMountPage(name) {
+            showConfirm(`确定要删除挂载页面 "/${name}" 吗？`, function(confirmed) {
+                if (!confirmed) return;
+                
+                fetch(`/admin/mounted-pages/${name}`, {
+                    method: 'DELETE',
+                    headers: {
+                        'X-CSRF-Token': getCsrfToken()
+                    }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        showMessage('页面删除成功！', 'success');
+                        loadMountedPages();
+                    } else {
+                        showMessage('删除失败: ' + (data.message || '未知错误'), 'error');
+                    }
+                })
+                .catch(error => {
+                    showMessage('请求失败: ' + error, 'error');
+                });
+            });
+        }
+    </script>
+</body>
+</html>

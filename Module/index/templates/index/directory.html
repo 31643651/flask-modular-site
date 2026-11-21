@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ breadcrumb[-1].name }} - 目录浏览</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'Microsoft YaHei', sans-serif;
+            background: #f5f7fa;
+            padding: 20px;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: #ffffff;
+            border-radius: 8px;
+            padding: 30px;
+        }
+        .breadcrumb {
+            margin-bottom: 20px;
+            color: #666;
+        }
+        .breadcrumb a {
+            color: #3498db;
+            text-decoration: none;
+        }
+        .breadcrumb a:hover {
+            text-decoration: underline;
+        }
+        .breadcrumb span {
+            margin: 0 8px;
+        }
+        h1 {
+            color: #2c3e50;
+            margin-bottom: 30px;
+            font-size: 24px;
+        }
+        .file-list {
+            list-style: none;
+        }
+        .file-item {
+            padding: 15px;
+            border-bottom: 1px solid #eee;
+            display: flex;
+            align-items: center;
+            transition: background 0.2s;
+        }
+        .file-item:hover {
+            background: #f9f9f9;
+        }
+        .file-icon {
+            width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-right: 15px;
+            background: #e8f4f8;
+            border-radius: 4px;
+            color: #3498db;
+            font-size: 20px;
+        }
+        .file-info {
+            flex: 1;
+        }
+        .file-name {
+            font-weight: 500;
+            color: #2c3e50;
+        }
+        .file-meta {
+            font-size: 12px;
+            color: #999;
+            margin-top: 4px;
+        }
+        .file-link {
+            color: #3498db;
+            text-decoration: none;
+        }
+        .file-link:hover {
+            text-decoration: underline;
+        }
+        .directory-icon {
+            background: #fef3e8;
+            color: #f39c12;
+        }
+        .empty {
+            text-align: center;
+            padding: 60px;
+            color: #999;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="breadcrumb">
+            {% for crumb in breadcrumb %}
+                {% if loop.last %}
+                    <strong>{{ crumb.name }}</strong>
+                {% else %}
+                    <a href="/{{ page_name }}{{ crumb.path|urlencode }}">{{ crumb.name }}</a>
+                    <span>/</span>
+                {% endif %}
+            {% endfor %}
+        </div>
+        <h1>{{ breadcrumb[-1].name }}</h1>
+        {% if items %}
+            <ul class="file-list">
+                {% for item in items %}
+                    <li class="file-item">
+                        <div class="file-icon {{ 'directory-icon' if not item.is_file else '' }}">{{ '▸' if not item.is_file else '' }}</div>
+                        <div class="file-info">
+                            <a href="/{{ page_name }}/{{ item.relative_path|urlencode }}" class="file-link file-name">{{ item.name }}</a>
+                            <div class="file-meta">
+                                {% if item.is_file %}
+                                    文件
+                                {% else %}
+                                    文件夹
+                                {% endif %}
+                            </div>
+                        </div>
+                    </li>
+                {% endfor %}
+            </ul>
+        {% else %}
+            <div class="empty">此文件夹为空</div>
+        {% endif %}
+    </div>
+</body>
+</html>

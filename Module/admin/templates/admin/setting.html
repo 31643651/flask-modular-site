@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" href="/static/favicon.ico">
+    <title>系统设置 - {{ server_info.server_name }}</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Microsoft YaHei', sans-serif; }
+        body { background: #f5f7fa; color: #2c3e50; line-height: 1.5; display: flex; min-height: 100vh; }
+
+        /* 左侧导航 */
+        .sidebar { width: 220px; background: white; display: flex; flex-direction: column; flex-shrink: 0; border-right: 1px solid #e0e0e0; }
+        .sidebar-header { padding: 20px; border-bottom: 1px solid #e0e0e0; }
+        .sidebar-title { font-size: 18px; font-weight: 500; color: #2c3e50; }
+        .sidebar-nav { flex: 1; padding: 10px 0; }
+        .nav-item { padding: 12px 20px; cursor: pointer; color: #7f8c8d; font-size: 14px; display: flex; align-items: center; transition: background 0.2s; text-decoration: none; }
+        .nav-item:hover { background: #f5f7fa; color: #2c3e50; }
+        .nav-item.active { background: #3498db; color: white; }
+
+        /* 主内容区 */
+        .main-content { flex: 1; padding: 20px; overflow-y: auto; }
+        .page-header { margin-bottom: 20px; }
+        .page-title { font-size: 20px; font-weight: 500; color: #2c3e50; }
+
+        /* 卡片 */
+        .card { background: white; border-radius: 8px; padding: 20px; margin-bottom: 16px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        .card-title { font-size: 16px; font-weight: 500; color: #2c3e50; margin-bottom: 16px; padding-bottom: 12px; border-bottom: 1px solid #e0e0e0; }
+
+        /* 设置项 */
+        .setting-item { display: flex; justify-content: space-between; align-items: center; padding: 14px 0; border-bottom: 1px solid #f0f0f0; }
+        .setting-item:last-child { border-bottom: none; }
+        .setting-info { flex: 1; }
+        .setting-label { font-size: 14px; font-weight: 500; color: #2c3e50; margin-bottom: 2px; }
+        .setting-desc { font-size: 12px; color: #7f8c8d; }
+
+        /* 开关组件 */
+        .toggle-switch { position: relative; width: 48px; height: 24px; flex-shrink: 0; margin-left: 16px; }
+        .toggle-switch input { opacity: 0; width: 0; height: 0; }
+        .toggle-slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #95a5a6; border-radius: 24px; transition: 0.3s; }
+        .toggle-slider:before { position: absolute; content: ""; height: 18px; width: 18px; left: 3px; bottom: 3px; background-color: white; border-radius: 50%; transition: 0.3s; }
+        .toggle-switch input:checked + .toggle-slider { background-color: #3498db; }
+        .toggle-switch input:checked + .toggle-slider:before { transform: translateX(24px); }
+
+        /* 消息提示 */
+        .toast { position: fixed; top: 20px; right: 20px; padding: 12px 20px; border-radius: 4px; font-size: 14px; z-index: 9999; opacity: 0; transition: opacity 0.3s; }
+        .toast.show { opacity: 1; }
+        .toast.success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .toast.error { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+
+        /* 暗夜模式 */
+        body.dark-mode { background: #1a1a1a; color: #e0e0e0; }
+        body.dark-mode .sidebar { background: #2d2d2d; border-right: 1px solid #4d4d4d; }
+        body.dark-mode .sidebar-header { border-bottom: 1px solid #4d4d4d; }
+        body.dark-mode .sidebar-title { color: #e0e0e0; }
+        body.dark-mode .nav-item { color: #a0a0a0; }
+        body.dark-mode .nav-item:hover { background: #3d3d3d; color: #e0e0e0; }
+        body.dark-mode .nav-item.active { background: #3498db; color: white; }
+        body.dark-mode .page-title { color: #e0e0e0; }
+        body.dark-mode .card { background: #2d2d2d; box-shadow: 0 2px 4px rgba(0,0,0,0.3); }
+        body.dark-mode .card-title { color: #e0e0e0; border-bottom: 1px solid #4d4d4d; }
+        body.dark-mode .setting-label { color: #e0e0e0; }
+        body.dark-mode .setting-desc { color: #a0a0a0; }
+        body.dark-mode .setting-item { border-bottom-color: #4d4d4d; }
+
+        /* 响应式 */
+        @media (max-width: 768px) {
+            body { flex-direction: column; }
+            .sidebar { width: 100%; }
+            .sidebar-nav { display: flex; overflow-x: auto; }
+            .nav-item { flex-shrink: 0; }
+        }
+    </style>
+</head>
+<body>
+    <div class="sidebar">
+        <div class="sidebar-header">
+            <div class="sidebar-title">控制台</div>
+        </div>
+        <div class="sidebar-nav">
+            <a href="/admin" class="nav-item">
+                仪表盘
+            </a>
+            <a href="/admin/config" class="nav-item">
+                配置管理
+            </a>
+            <a href="/admin/setting" class="nav-item active">
+                系统设置
+            </a>
+            <a href="/admin/activity" class="nav-item">
+                活动日志
+            </a>
+            <a href="/admin/users" class="nav-item">
+                活动账户
+            </a>
+            <a href="/admin/userfix" class="nav-item">
+                用户反馈
+            </a>
+        </div>
+    </div>
+
+    <div class="main-content">
+        <div class="page-header">
+            <div class="page-title">系统管理 > 系统设置</div>
+        </div>
+
+        <div id="toast" class="toast"></div>
+
+        <div class="card">
+            <div class="card-title">认证安全</div>
+            <div class="setting-item">
+                <div class="setting-info">
+                    <div class="setting-label">管理员验证码</div>
+                    <div class="setting-desc">登录后是否需要输入16位验证码</div>
+                </div>
+                <label class="toggle-switch">
+                    <input type="checkbox" id="admin_verify_enabled" onchange="toggleSetting('admin_verify_enabled', this.checked)">
+                    <span class="toggle-slider"></span>
+                </label>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-title">壁纸功能</div>
+            <div class="setting-item">
+                <div class="setting-info">
+                    <div class="setting-label">启用壁纸</div>
+                    <div class="setting-desc">关闭后首页不加载壁纸</div>
+                </div>
+                <label class="toggle-switch">
+                    <input type="checkbox" id="wallpaper_enabled" onchange="toggleSetting('wallpaper_enabled', this.checked)">
+                    <span class="toggle-slider"></span>
+                </label>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-title">书籍功能</div>
+            <div class="setting-item">
+                <div class="setting-info">
+                    <div class="setting-label">启用书籍</div>
+                    <div class="setting-desc">关闭后隐藏书籍入口，访问URL重定向到首页</div>
+                </div>
+                <label class="toggle-switch">
+                    <input type="checkbox" id="books_enabled" onchange="toggleSetting('books_enabled', this.checked)">
+                    <span class="toggle-slider"></span>
+                </label>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-title">画廊功能</div>
+            <div class="setting-item">
+                <div class="setting-info">
+                    <div class="setting-label">启用画廊</div>
+                    <div class="setting-desc">关闭后隐藏画廊入口，访问URL重定向到首页</div>
+                </div>
+                <label class="toggle-switch">
+                    <input type="checkbox" id="gallery_enabled" onchange="toggleSetting('gallery_enabled', this.checked)">
+                    <span class="toggle-slider"></span>
+                </label>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-title">页面挂载</div>
+            <div class="setting-item">
+                <div class="setting-info">
+                    <div class="setting-label">启用挂载页面</div>
+                    <div class="setting-desc">关闭后隐藏挂载入口，访问URL重定向到首页</div>
+                </div>
+                <label class="toggle-switch">
+                    <input type="checkbox" id="mounted_pages_enabled" onchange="toggleSetting('mounted_pages_enabled', this.checked)">
+                    <span class="toggle-slider"></span>
+                </label>
+            </div>
+        </div>
+
+        <div style="margin-top: 20px;">
+            <a href="/" class="btn" style="padding: 10px 20px; background: #3498db; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 14px; text-decoration: none; display: inline-block;">返回主页</a>
+        </div>
+    </div>
+
+    <script>
+        function getCsrfToken() {
+            return '{{ csrf_token }}';
+        }
+
+        // 显示提示消息
+        function showToast(text, type) {
+            var toast = document.getElementById('toast');
+            toast.textContent = text;
+            toast.className = 'toast ' + type + ' show';
+            setTimeout(function() {
+                toast.className = 'toast';
+            }, 3000);
+        }
+
+        // 加载设置
+        function loadSettings() {
+            fetch('/admin/setting/api')
+                .then(function(response) { return response.json(); })
+                .then(function(data) {
+                    if (data.success) {
+                        var settings = data.settings;
+                        document.getElementById('admin_verify_enabled').checked = settings.admin_verify_enabled !== false;
+                        document.getElementById('wallpaper_enabled').checked = settings.wallpaper_enabled !== false;
+                        document.getElementById('books_enabled').checked = settings.books_enabled !== false;
+                        document.getElementById('gallery_enabled').checked = settings.gallery_enabled !== false;
+                        document.getElementById('mounted_pages_enabled').checked = settings.mounted_pages_enabled !== false;
+                    } else {
+                        showToast('加载设置失败: ' + (data.message || '未知错误'), 'error');
+                    }
+                })
+                .catch(function(error) {
+                    showToast('请求失败: ' + error, 'error');
+                });
+        }
+
+        // 更新设置
+        function toggleSetting(key, value) {
+            fetch('/admin/setting/update', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': getCsrfToken() },
+                body: JSON.stringify({ key: key, value: value }),
+                credentials: 'same-origin'
+            })
+            .then(function(response) { return response.json(); })
+            .then(function(data) {
+                if (data.success) {
+                    showToast('设置已保存', 'success');
+                } else {
+                    showToast('保存失败: ' + (data.message || '未知错误'), 'error');
+                    // 恢复开关状态
+                    loadSettings();
+                }
+            })
+            .catch(function(error) {
+                showToast('请求失败: ' + error, 'error');
+                loadSettings();
+            });
+        }
+
+        // 检查暗夜模式
+        function checkDarkMode() {
+            var darkMode = getCookie('darkMode') === 'true';
+            if (darkMode) {
+                document.body.classList.add('dark-mode');
+            }
+        }
+
+        function getCookie(name) {
+            var value = '; ' + document.cookie;
+            var parts = value.split('; ' + name + '=');
+            if (parts.length === 2) return parts.pop().split(';').shift();
+            return '';
+        }
+
+        // 页面加载
+        checkDarkMode();
+        loadSettings();
+    </script>
+</body>
+</html>

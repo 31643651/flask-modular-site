@@ -1,0 +1,10 @@
+{
+  "description": "挂载页面添加 API 成功响应结构（B5 锚定）：success/message/name/page_type/redirect_url 五键。多余键允许，必需键缺失或类型不符即失败。",
+  "required": {
+    "success": "bool",
+    "message": "str",
+    "name": "str",
+    "page_type": "str",
+    "redirect_url": "str"
+  }
+}

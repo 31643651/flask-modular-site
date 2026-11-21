@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" href="/static/favicon.ico">
+    <title>用户信息</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Microsoft YaHei', sans-serif; }
+        body { background: #f5f7fa; color: #2c3e50; line-height: 1.6; padding: 20px; min-height: 100vh; display: flex; align-items: center; justify-content: center; }
+        .container { background: white; padding: 40px; border-radius: 10px; box-shadow: 0 5px 20px rgba(0,0,0,0.1); max-width: 500px; width: 100%; }
+        .header { text-align: center; margin-bottom: 30px; }
+        .header h1 { color: #2c3e50; font-size: 24px; margin-bottom: 10px; }
+        .info-card { background: #f8f9fa; padding: 25px; border-radius: 8px; margin-bottom: 25px; }
+        .info-item { display: flex; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid #e9ecef; }
+        .info-item:last-child { border-bottom: none; }
+        .info-label { color: #7f8c8d; font-weight: 500; }
+        .info-value { color: #2c3e50; font-weight: 600; }
+        .btn { width: 100%; padding: 12px; border: none; border-radius: 6px; font-size: 16px; font-weight: 500; cursor: pointer; }
+        .btn-logout { background: #e74c3c; color: white; }
+        .btn-logout:hover { background: #c0392b; }
+        .btn-home { background: #3498db; color: white; margin-bottom: 15px; }
+        .btn-home:hover { background: #2980b9; }
+        .btn-dark { background: #34495e; color: white; margin-bottom: 15px; }
+        .btn-dark:hover { background: #2c3e50; }
+        
+        /* 暗夜模式 */
+        body.dark-mode { background: #1a1a1a; color: #e0e0e0; }
+        body.dark-mode .container { background: #2d2d2d; box-shadow: 0 5px 20px rgba(0,0,0,0.5); }
+        body.dark-mode .header h1 { color: #e0e0e0; }
+        body.dark-mode .info-card { background: #3d3d3d; }
+        body.dark-mode .info-item { border-bottom: 1px solid #4d4d4d; }
+        body.dark-mode .info-label { color: #a0a0a0; }
+        body.dark-mode .info-value { color: #e0e0e0; }
+        
+        /* 滑动开关样式 */
+        .switch { position: relative; display: inline-block; width: 50px; height: 26px; }
+        .switch input { opacity: 0; width: 0; height: 0; }
+        .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #ccc; transition: .4s; }
+        .slider:before { position: absolute; content: ""; height: 20px; width: 20px; left: 3px; bottom: 3px; background-color: white; transition: .4s; }
+        input:checked + .slider { background-color: #3498db; }
+        input:checked + .slider:before { transform: translateX(24px); }
+        .slider.round { border-radius: 26px; }
+        .slider.round:before { border-radius: 50%; }
+
+        @media (max-width: 480px) {
+            .container { padding: 30px 20px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>用户信息</h1>
+        </div>
+
+        <div class="info-card">
+            <div class="info-item">
+                <span class="info-label">用户名</span>
+                <span class="info-value">{{ user.username }}</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">用户ID</span>
+                <span class="info-value">{{ user.id }}</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">角色</span>
+                <span class="info-value">{{ user.role | upper }}</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">状态</span>
+                <span class="info-value" style="color: #27ae60;">已启用</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">暗夜模式</span>
+                <label class="switch">
+                    <input type="checkbox" id="darkModeToggle" onchange="toggleDarkMode()">
+                    <span class="slider round"></span>
+                </label>
+            </div>
+        </div>
+
+        <form action="/" method="get">
+            <button type="submit" class="btn btn-home">返回主页</button>
+        </form>
+
+        <form action="/user/logout" method="post">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+            <button type="submit" class="btn btn-logout">退出登录</button>
+        </form>
+    </div>
+    
+    <script>
+        // 检查 Cookie 中的暗夜模式设置
+        function checkDarkMode() {
+            const darkMode = getCookie('darkMode') === 'true';
+            document.getElementById('darkModeToggle').checked = darkMode;
+            applyDarkMode(darkMode);
+        }
+        
+        // 切换暗夜模式
+        function toggleDarkMode() {
+            const darkMode = document.getElementById('darkModeToggle').checked;
+            setCookie('darkMode', darkMode, 365);
+            applyDarkMode(darkMode);
+        }
+        
+        // 应用暗夜模式到当前页面
+        function applyDarkMode(darkMode) {
+            document.body.classList.toggle('dark-mode', darkMode);
+        }
+        
+        // 获取 Cookie
+        function getCookie(name) {
+            const value = `; ${document.cookie}`;
+            const parts = value.split(`; ${name}=`);
+            if (parts.length === 2) return parts.pop().split(';').shift();
+            return '';
+        }
+        
+        // 设置 Cookie
+        function setCookie(name, value, days) {
+            const date = new Date();
+            date.setTime(date.getTime() + (days * 24 * 60 * 60 * 1000));
+            const expires = `expires=${date.toUTCString()}`;
+            document.cookie = `${name}=${value};${expires};path=/`;
+        }
+        
+        // 页面加载时检查暗夜模式
+        checkDarkMode();
+    </script>
+</body>
+</html>

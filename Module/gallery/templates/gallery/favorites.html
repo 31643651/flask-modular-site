@@ -1,0 +1,464 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+    <link rel="icon" href="/static/favicon.ico">
+    <title>我的收藏 - 图片画廊</title>
+    <script src="/static/common/ui.js"></script>
+    <link rel="stylesheet" href="/static/common/dark-mode.css">
+    <link rel="stylesheet" href="{{ static_url('gallery/css/favorites.css') }}">
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>我的收藏</h1>
+            <div class="total">共 {{ total }} 张图片</div>
+        </div>
+
+        <div class="controls">
+            <div style="display: flex; gap: 5px;">
+                <input type="text" class="search-box" id="searchBox" placeholder="搜索收藏图片...">
+                <button class="search-btn" id="searchBtn" style="flex: 0 0 auto; width: 80px;">搜索</button>
+                <a href="/gallery" class="search-btn home" style="flex: 0 0 auto; text-decoration: none; display: flex; align-items: center; justify-content: center;">返回画廊</a>
+            </div>
+        </div>
+
+        <div class="breadcrumbs">
+            <a href="/gallery">首页</a>
+            <span class="separator">></span>
+            <span class="current">我的收藏</span>
+        </div>
+
+        {% if favorites %}
+        <div class="gallery" id="gallery">
+            {% for fav in favorites %}
+            <div class="gallery-item" data-url="{{ fav.url }}" data-path="{{ fav.path }}" >
+                <div class="image-container">
+                    <img src="{{ fav.url }}" alt="{{ fav.name }}" class="gallery-image" loading="lazy">
+                </div>
+                <div class="image-info">
+                    <div class="image-name">{{ fav.name }}</div>
+                    <div class="image-path">{{ fav.path }}</div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="empty-state">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
+            </svg>
+            <h2>还没有收藏任何图片</h2>
+            <p>点击图片灯箱中的心形按钮来收藏喜欢的图片</p>
+            <a href="/gallery">去浏览图片</a>
+        </div>
+        {% endif %}
+    </div>
+
+    {% set lightbox_favorite_title = '取消收藏' %}
+    {% include 'gallery/_lightbox.html' %}
+
+    <!-- 自定义对话框模态框 -->
+    <div id="dialogModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 9999; justify-content: center; align-items: center;">
+        <div style="background: white; border-radius: 8px; padding: 24px; max-width: 400px; width: 90%; box-shadow: 0 4px 20px rgba(0,0,0,0.3);">
+            <div id="dialogMessage" style="font-size: 14px; color: #2c3e50; margin-bottom: 20px; line-height: 1.6;"></div>
+            <div style="display: flex; justify-content: flex-end; gap: 8px;">
+                <button id="dialogCancel" class="btn" style="background: #95a5a6;" onclick="closeDialog()">取消</button>
+                <button id="dialogConfirm" class="btn btn-success" onclick="confirmDialog()">确定</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let isMobile = window.innerWidth <= 768;
+        let zoomLevel = 1;
+        let maxZoom = 4;
+        let currentImageIndex = -1;
+        let galleryItems = [];
+        let touchStartX = 0;
+        let touchEndX = 0;
+
+        window.csrfToken = {{ csrf_token | tojson if csrf_token else "''" }};
+
+        function showNotification(message) {
+            showDialog(message, null, false);
+        }
+
+        document.addEventListener('DOMContentLoaded', function() {
+            // 移动端滚动隐藏/显示搜索栏
+            let lastScrollY = 0;
+            let controls = document.querySelector('.controls');
+            let header = document.querySelector('.header');
+            let scrollTimeout;
+
+            if (isMobile) {
+                window.addEventListener('scroll', function() {
+                    const currentScrollY = window.scrollY;
+
+                    // 只有当滚动距离超过一定阈值时才触发
+                    if (Math.abs(currentScrollY - lastScrollY) > 10) {
+                        if (currentScrollY > lastScrollY && currentScrollY > 50) {
+                            // 向下滚动，隐藏搜索栏和标题
+                            controls.classList.add('hidden');
+                            header.classList.add('hidden');
+                        } else {
+                            // 向上滚动，显示搜索栏和标题
+                            controls.classList.remove('hidden');
+                            header.classList.remove('hidden');
+                        }
+                        lastScrollY = currentScrollY;
+                    }
+
+                    // 添加滚动结束检测
+                    clearTimeout(scrollTimeout);
+                    scrollTimeout = setTimeout(() => {
+                        // 滚动结束
+                    }, 100);
+                }, { passive: true });
+            }
+
+            // 窗口大小改变时更新 isMobile 状态
+            window.addEventListener('resize', function() {
+                isMobile = window.innerWidth <= 768;
+            });
+
+            galleryItems = Array.from(document.querySelectorAll('.gallery-item'));
+
+            galleryItems.forEach((item, index) => {
+                item.addEventListener('click', function() {
+                    currentImageIndex = index;
+                    const url = this.dataset.url;
+                    const path = this.dataset.path;
+                    openLightbox(url, path);
+                });
+            });
+
+            // 搜索功能
+            const searchBox = document.getElementById('searchBox');
+            const searchBtn = document.getElementById('searchBtn');
+            
+            function performSearch() {
+                const query = searchBox.value.trim().toLowerCase();
+                if (!query) {
+                    location.reload();
+                    return;
+                }
+                
+                const items = document.querySelectorAll('.gallery-item');
+                let foundCount = 0;
+                
+                items.forEach(item => {
+                    const name = item.querySelector('.image-name').textContent.toLowerCase();
+                    const path = item.querySelector('.image-path').textContent.toLowerCase();
+                    
+                    if (name.includes(query) || path.includes(query)) {
+                        item.style.display = '';
+                        foundCount++;
+                    } else {
+                        item.style.display = 'none';
+                    }
+                });
+                
+                if (foundCount === 0) {
+                    showAlert('未找到匹配的图片');
+                }
+            }
+            
+            searchBtn.addEventListener('click', performSearch);
+            searchBox.addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    performSearch();
+                }
+            });
+
+            document.getElementById('lightboxClose').addEventListener('click', closeLightbox);
+            document.getElementById('lightboxPrev').addEventListener('click', showPrevImage);
+            document.getElementById('lightboxNext').addEventListener('click', showNextImage);
+            document.getElementById('lightboxFavorite').addEventListener('click', toggleFavoriteCurrent);
+            document.getElementById('lightbox').addEventListener('click', function(e) {
+                // 点击图片容器外部（排除按钮）时关闭灯箱
+                if (e.target === this || e.target.classList.contains('lightbox-content')) {
+                    closeLightbox();
+                }
+            });
+
+            document.addEventListener('keydown', function(e) {
+                if (!document.getElementById('lightbox').classList.contains('active')) return;
+                if (e.key === 'Escape') closeLightbox();
+                if (e.key === 'ArrowLeft') showPrevImage();
+                if (e.key === 'ArrowRight') showNextImage();
+            });
+
+            // 滚轮缩放功能
+            document.getElementById('lightboxImage').addEventListener('wheel', function(e) {
+                if (!document.getElementById('lightbox').classList.contains('active')) return;
+
+                e.preventDefault();
+
+                if (e.deltaY < 0) {
+                    zoomIn();
+                } else {
+                    zoomOut();
+                }
+            });
+
+            // 手机端左右滑动切换图片
+            const lightbox = document.getElementById('lightbox');
+            lightbox.addEventListener('touchstart', function(e) {
+                touchStartX = e.changedTouches[0].screenX;
+            }, { passive: true });
+
+            lightbox.addEventListener('touchend', function(e) {
+                touchEndX = e.changedTouches[0].screenX;
+                handleSwipe();
+            }, { passive: true });
+
+            if (isMobile) {
+                setupTouchZoom();
+                setupDoubleTap();
+            }
+        });
+
+        // 为缩略图绑定加载淡入：加载完成前 opacity:0，避免加载瞬间被压成方形/拉伸
+        function bindThumbnailFade() {
+            document.querySelectorAll('.gallery-image').forEach(function(img) {
+                if (img.classList.contains('loaded')) return;
+                const done = function() { img.classList.add('loaded'); };
+                if (img.complete && img.naturalWidth > 0) {
+                    done();
+                } else {
+                    img.addEventListener('load', done, { once: true });
+                    img.addEventListener('error', done, { once: true });
+                }
+            });
+            setupNearPreload();
+        }
+
+        // 扩大图片预加载范围：视口较远的图片提前从 lazy 提升为 eager，
+        // 让快速滚动时图片已就绪，避免出现大片白色/空白区域
+        function setupNearPreload() {
+            if (!window._nearPreloadObserver) {
+                if (!('IntersectionObserver' in window)) return;
+                window._nearPreloadObserver = new IntersectionObserver(function(entries) {
+                    entries.forEach(function(entry) {
+                        const img = entry.target;
+                        if (entry.isIntersecting) {
+                            if (img.loading === 'lazy') img.loading = 'eager';
+                            window._nearPreloadObserver.unobserve(img);
+                        }
+                    });
+                }, { rootMargin: '2500px 0px' });
+            }
+            // 每次渲染后都对新出现的懒加载图片注册观察
+            document.querySelectorAll('.gallery-image').forEach(function(img) {
+                if (img.loading === 'lazy') window._nearPreloadObserver.observe(img);
+            });
+        }
+
+        bindThumbnailFade();
+
+        function handleSwipe() {
+            const swipeThreshold = 50;
+            const diff = touchStartX - touchEndX;
+
+            if (Math.abs(diff) > swipeThreshold) {
+                if (diff > 0) {
+                    showNextImage();
+                } else {
+                    showPrevImage();
+                }
+            }
+        }
+
+        function showNextImage() {
+            if (galleryItems.length === 0) return;
+            currentImageIndex = (currentImageIndex + 1) % galleryItems.length;
+            const item = galleryItems[currentImageIndex];
+            openLightbox(item.dataset.url, item.dataset.path);
+        }
+
+        function showPrevImage() {
+            if (galleryItems.length === 0) return;
+            currentImageIndex = (currentImageIndex - 1 + galleryItems.length) % galleryItems.length;
+            const item = galleryItems[currentImageIndex];
+            openLightbox(item.dataset.url, item.dataset.path);
+        }
+
+        function openLightbox(url, path) {
+            const lightbox = document.getElementById('lightbox');
+            const lightboxImage = document.getElementById('lightboxImage');
+            const lightboxName = document.getElementById('lightboxName');
+            const lightboxFavorite = document.getElementById('lightboxFavorite');
+
+            lightboxImage.src = url;
+            lightbox.classList.add('active');
+            document.body.style.overflow = 'hidden';
+
+            const fileName = url.split('/').pop();
+            lightboxName.textContent = fileName || '图片';
+
+            // 收藏页中的图片都是已收藏状态，心形置为激活
+            lightboxFavorite.classList.add('active');
+
+            resetZoom();
+        }
+
+        function closeLightbox() {
+            const lightbox = document.getElementById('lightbox');
+            const lightboxImage = document.getElementById('lightboxImage');
+
+            lightbox.classList.remove('active');
+            document.body.style.overflow = 'auto';
+
+            resetZoom();
+            lightboxImage.src = '';
+        }
+
+        function zoomIn() {
+            if (zoomLevel < maxZoom) {
+                zoomLevel += 0.5;
+                applyZoom();
+            }
+        }
+
+        function zoomOut() {
+            if (zoomLevel > 0.5) {
+                zoomLevel -= 0.5;
+                applyZoom();
+            }
+        }
+
+        function resetZoom() {
+            zoomLevel = 1;
+            applyZoom();
+        }
+
+        function applyZoom() {
+            const lightboxImage = document.getElementById('lightboxImage');
+            lightboxImage.style.transform = `scale(${zoomLevel})`;
+        }
+
+        function setupTouchZoom() {
+            const lightboxContent = document.querySelector('.lightbox-content');
+            let initialDistance = 0;
+
+            lightboxContent.addEventListener('touchstart', function(e) {
+                if (e.touches.length === 2) {
+                    initialDistance = getDistance(e.touches[0], e.touches[1]);
+                }
+            });
+
+            lightboxContent.addEventListener('touchmove', function(e) {
+                if (e.touches.length === 2) {
+                    e.preventDefault();
+                    const currentDistance = getDistance(e.touches[0], e.touches[1]);
+
+                    if (initialDistance > 0) {
+                        const scale = currentDistance / initialDistance;
+                        zoomLevel = Math.min(Math.max(1, scale), maxZoom);
+                        applyZoom();
+                    }
+                }
+            });
+
+            lightboxContent.addEventListener('touchend', function() {
+                initialDistance = 0;
+            });
+
+            function getDistance(touch1, touch2) {
+                const dx = touch1.clientX - touch2.clientX;
+                const dy = touch1.clientY - touch2.clientY;
+                return Math.sqrt(dx * dx + dy * dy);
+            }
+        }
+
+        function setupDoubleTap() {
+            const lightboxImage = document.getElementById('lightboxImage');
+            let lastTap = 0;
+
+            lightboxImage.addEventListener('touchstart', function(e) {
+                const currentTime = new Date().getTime();
+                const tapLength = currentTime - lastTap;
+
+                if (tapLength < 300 && tapLength > 0) {
+                    e.preventDefault();
+                    if (zoomLevel === 1) {
+                        zoomLevel = 2;
+                    } else {
+                        zoomLevel = 1;
+                    }
+                    applyZoom();
+                }
+
+                lastTap = currentTime;
+            });
+        }
+
+        function toggleFavoriteCurrent() {
+            const item = galleryItems[currentImageIndex];
+            if (!item) return;
+
+            const imagePath = item.dataset.path;
+            if (!imagePath) {
+                showNotification('无法获取图片信息');
+                return;
+            }
+
+            const favoriteBtn = document.getElementById('lightboxFavorite');
+            const isFavorite = favoriteBtn.classList.contains('active');
+            const apiUrl = isFavorite ? '/gallery/api/favorite/remove' : '/gallery/api/favorite/add';
+
+            fetch(apiUrl, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-Token': getCsrfToken()
+                },
+                body: JSON.stringify({ path: imagePath })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    if (isFavorite) {
+                        favoriteBtn.classList.remove('active');
+                        showNotification('已取消收藏');
+                    } else {
+                        favoriteBtn.classList.add('active');
+                        showNotification('收藏成功');
+                    }
+                } else {
+                    showNotification(data.message || '操作失败');
+                }
+            })
+            .catch(error => {
+                console.error('取消收藏失败:', error);
+                showNotification('取消收藏失败，请重试');
+            });
+        }
+
+        function showNotification(message) {
+            const notification = document.createElement('div');
+            notification.style.cssText = `
+                position: fixed;
+                top: 80px;
+                left: 50%;
+                transform: translateX(-50%);
+                background: rgba(0, 0, 0, 0.8);
+                color: white;
+                padding: 12px 24px;
+                border-radius: 8px;
+                z-index: 10001;
+                animation: fadeInOut 2s ease-in-out forwards;
+                font-size: 14px;
+            `;
+            notification.textContent = message;
+            document.body.appendChild(notification);
+            setTimeout(() => notification.remove(), 2000);
+        }
+    </script>
+</body>
+</html>
